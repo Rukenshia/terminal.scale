@@ -31,7 +31,7 @@ std::vector<Product> TerminalApi::getProducts()
     String response;
 
     // Set up headers with authentication token
-    String headersStr = "Authorization: Bearer ";
+    String headersStr = "Bearer ";
     headersStr += token;
 
     // Make GET request with headers
@@ -40,7 +40,7 @@ std::vector<Product> TerminalApi::getProducts()
         Serial.printf("Response: %s\n", response.c_str());
         Serial.printf("Response length: %d\n", response.length());
 
-                // Parse JSON response
+        // Parse JSON response
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, response);
 

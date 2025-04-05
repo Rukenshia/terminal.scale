@@ -2,12 +2,13 @@
 #define WIFI_MANAGER_H
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 
 class WiFiManager
 {
 private:
-    WiFiClientSecure client;
+    const char *ssid;
+    const char *password;
 
 public:
     WiFiManager();
