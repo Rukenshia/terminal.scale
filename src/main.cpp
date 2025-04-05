@@ -40,17 +40,33 @@ void setup()
 
   tft.init();
   tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+
+  auto bounds = typeText(tft, "Initializing", &GeistMono_VariableFont_wght18pt7b, 150);
+  startBlinking(tft, bounds, 1000);
 
   wifi.begin(WIFI_SSID, WIFI_PASSWORD);
   wifi.connect();
   wifi.syncTime();
   Serial.println("WiFi connected");
 
+  stopBlinking();
+  wipeText(tft, bounds);
+
   terminalApi.begin(&wifi, "trm_test_5a684b12979177c46aac");
 
   Serial.println("Fetching products...");
   std::vector<Product> products = terminalApi.getProducts();
   Serial.printf("Found %d products\n", products.size());
+
+  // show first product
+  bounds = typeText(tft, "Product: ", &GeistMono_VariableFont_wght18pt7b, 150);
+  delay(1000);
+  wipeText(tft, bounds);
+  tft.setTextColor(ACCENT_COLOR);
+  typeText(tft, products[0].name.c_str(), &GeistMono_VariableFont_wght18pt7b, 150);
+  delay(5000);
+  wipeText(tft, bounds);
 
   terminalAnimation(tft);
 
