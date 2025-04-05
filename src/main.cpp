@@ -5,6 +5,10 @@
 #include <TFT_eSPI.h>
 
 #include "ui.h"
+#include "led.h"
+#include "wifi.secret.h"
+#include "wifi_manager.h"
+#include "terminal_api.h"
 
 #define PIN_SWITCH 17
 #define PIN_DT 27
@@ -23,6 +27,9 @@ static const float CALIBRATION_FACTOR = 1103.88; // This value is obtained from 
 HX711 scale;
 
 TFT_eSPI tft = TFT_eSPI();
+LedStrip ledStrip = LedStrip();
+WiFiManager wifi = WiFiManager();
+TerminalApi terminalApi = TerminalApi();
 
 void calibrate();
 
@@ -34,9 +41,21 @@ void setup()
   tft.init();
   tft.setRotation(1);
 
-  delay(1000);
+  wifi.begin(WIFI_SSID, WIFI_PASSWORD);
+  wifi.connect();
+  wifi.syncTime();
+  Serial.println("WiFi connected");
+
+  terminalApi.begin(&wifi, "trm_test_5a684b12979177c46aac");
+
+  Serial.println("Fetching products...");
+  std::vector<Product> products = terminalApi.getProducts();
+  Serial.printf("Found %d products\n", products.size());
 
   terminalAnimation(tft);
+
+  ledStrip.begin();
+  ledStrip.progress(0.0f);
 
   pinMode(PIN_SWITCH, INPUT);
 

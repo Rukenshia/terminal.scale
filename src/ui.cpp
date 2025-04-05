@@ -14,7 +14,7 @@ void terminalAnimation(TFT_eSPI &tft)
     // when it is done typing, the ACCENT_COLOR box flashes twice
     // then the text "terminal" disappears letter by letter with the box moving behind it
 
-    const char *text = "terminal ";
+    const char *text = "terminal";
     const int textLength = strlen(text);
     int16_t charWidth = 0;          // Current char width
     const int16_t cursorWidth = 20; // Width of the accent color box
@@ -27,16 +27,15 @@ void terminalAnimation(TFT_eSPI &tft)
                                    // calculated correctly, so we set it manually
     const int16_t cursorHeight = fontHeight + 8;
     const int16_t cursorY = y - cursorHeight + 4;
-
-    Serial.printf("%d %d %d %d\n", tft.textWidth("a"), tft.textWidth("b"), tft.textWidth("c"), tft.textWidth("d"));
+    int16_t cursorX = startX;
 
     // Type out the text
-    for (int i = 0; i <= textLength; i++)
+    for (int i = 0; i < textLength; i++)
     {
         // Get the width of the current character
         charWidth += tft.textWidth(String(text[i]));
 
-        Serial.printf("charWidth: %d\n", charWidth);
+        Serial.printf("charWidth: %d for char: %c\n", charWidth, text[i]);
 
         // Clear the previous cursor and text area
         tft.fillRect(startX, cursorY, charWidth + cursorWidth, cursorHeight, BACKGROUND_COLOR);
@@ -49,37 +48,44 @@ void terminalAnimation(TFT_eSPI &tft)
         }
 
         // Draw the cursor at current position
-        int cursorX = startX + charWidth + 8;
+        cursorX = startX + charWidth + 8;
+        Serial.printf("cursorX: %d\n", cursorX);
         tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
 
         delay(delay_ms);
     }
 
-    Serial.printf("blinking cursor at x: %d\n", startX + charWidth);
+    // draw final character
+    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
+    tft.setCursor(startX, y);
+    tft.print(text);
+    cursorX = startX + charWidth + 20; // Update cursor position
+    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
+    delay(delay_ms); // Wait for the last character to be drawn
 
     // Cursor blinking twice
     for (int blink = 0; blink < 2; blink++)
     {
         // Hide cursor
-        tft.fillRect(startX + charWidth, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
+        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
         delay(300);
 
         // Show cursor
-        tft.fillRect(startX + charWidth, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
+        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
         delay(300);
     }
 
+    // Add ".scale" to the end of the text
+    tft.setCursor(cursorX, y);
+
     // Smoothly sweep the cursor to the left
-    int16_t x = startX + charWidth;
-    while (x > startX + 1)
+    while (cursorX > startX)
     {
-        tft.drawFastVLine(x + cursorWidth, cursorY, cursorHeight, BACKGROUND_COLOR);
-        x -= 1;
-        tft.drawFastVLine(x, cursorY, cursorHeight, ACCENT_COLOR);
+        tft.drawFastVLine(cursorX + cursorWidth, cursorY, cursorHeight, BACKGROUND_COLOR);
+        cursorX -= 1;
+        tft.drawFastVLine(cursorX, cursorY, cursorHeight, ACCENT_COLOR);
 
         delay(1);
     }
-
-    // Clear the cursor at the end
-    tft.fillRect(x - 1, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
+    tft.fillScreen(BACKGROUND_COLOR);
 }
