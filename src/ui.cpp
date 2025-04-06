@@ -82,7 +82,18 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     for (int i = 0; i < textLength; i++)
     {
         // Get the width of the current character
-        charWidth += tft.textWidth(String(text[i]));
+        if (text[i] == ' ')
+        {
+            // Handle space character
+            charWidth += tft.textWidth("_");
+            continue;
+        }
+        else
+        {
+            charWidth += tft.textWidth(String(text[i]));
+        }
+
+        Serial.printf("Drawing character: %c, width: %d\n", text[i], charWidth);
 
         // Clear the previous cursor and text area
         tft.fillRect(startX, cursorY, charWidth + cursorWidth, cursorHeight, BACKGROUND_COLOR);
@@ -95,19 +106,23 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
         }
 
         // Draw the cursor at current position
-        cursorX = startX + charWidth + 8;
+        cursorX = startX + charWidth + 12;
+
+        Serial.printf("Cursor position: %d\n", cursorX);
         tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
 
         delay(delay_ms);
     }
 
     // Draw final character
+    charWidth += tft.textWidth(String(text[textLength - 1]));
+    Serial.printf("Drawing character: %s, width: %d\n", text, charWidth);
     tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
     tft.setCursor(startX, textY);
     tft.print(text);
-    charWidth += tft.textWidth(String(text[textLength - 1]));
 
-    cursorX = startX + charWidth + 8;
+    cursorX = startX + charWidth + 12;
+    Serial.printf("Cursor position: %d\n", cursorX);
     tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
     delay(delay_ms); // Wait for the last character to be drawn
 
@@ -123,6 +138,9 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     bounds.cursorHeight = cursorHeight;
     bounds.yAdvance = font->yAdvance;
 
+    Serial.printf("TextBounds: x=%d, y=%d, width=%d, height=%d, cursorX=%d, cursorY=%d\n",
+                  bounds.x, bounds.y, bounds.width, bounds.height, bounds.cursorX, bounds.cursorY);
+
     return bounds;
 }
 
@@ -130,6 +148,10 @@ void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms)
 {
     int16_t cursorX = bounds.cursorX;
     const int16_t wipeHeight = max(bounds.height, bounds.cursorHeight) + 8;
+
+    // Calculate the full area that needs to be wiped
+    int16_t areaStartX = bounds.x;
+    int16_t areaWidth = bounds.width + bounds.cursorWidth + 20; // Add extra margin to ensure all text is cleared
 
     // Smoothly sweep the cursor to the left
     while (cursorX > bounds.x)
@@ -140,12 +162,13 @@ void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms)
         delay(speed_ms);
     }
 
-    // Clear entire text area including cursor at the end
+    // Clear entire text area including cursor and any possible remnants
+    // Use a larger area than strictly necessary to ensure complete cleanup
     tft.fillRect(
-        bounds.x,
-        bounds.cursorY,
-        bounds.width + bounds.cursorWidth,
-        bounds.yAdvance,
+        areaStartX - 5,     // Start slightly before text area
+        bounds.cursorY - 5, // Start slightly above cursor
+        areaWidth + 10,     // Add extra pixels to ensure complete clearing
+        wipeHeight + 10,    // Use wipeHeight plus margin for complete vertical clearing
         BACKGROUND_COLOR);
 }
 
