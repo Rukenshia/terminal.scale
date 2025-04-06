@@ -1,9 +1,8 @@
 #include <Arduino.h>
 #include <HX711.h>
-
 #include <SPI.h>
 #include <TFT_eSPI.h>
-
+#include <LittleFS.h>
 #include "ui.h"
 #include "led.h"
 #include "wifi.secret.h"
@@ -35,47 +34,54 @@ UI ui = UI(tft);
 #define MAIN_FONT &GeistMono_VariableFont_wght12pt7b
 
 void calibrate();
+void listFiles(const char *dirname);
 
 void setup()
 {
+  // Initialize serial first for debugging
   Serial.begin(115200);
+  Serial.println("\n\n=== Scale Application Starting ===");
 
+  // Initialize LittleFS
+  if (!LittleFS.begin(false))
+  {
+    Serial.println("LittleFS mount failed! Formatting...");
+    if (!LittleFS.begin(true))
+    {
+      Serial.println("LittleFS mount failed even after formatting!");
+    }
+    else
+    {
+      Serial.println("LittleFS formatted and mounted successfully");
+    }
+  }
+  else
+  {
+    Serial.println("LittleFS mounted successfully");
+  }
+
+  // List files in the root directory to verify
+  listFiles("/");
+
+  // Initialize LED strip
   ledStrip.begin();
 
-  for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
-  {
-    ledStrip.progress(progress);
-    delay(10);
-  }
-  delay(5000);
-  ledStrip.progress(0.0f);
-
+  // Initialize the display
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   tft.setTextWrap(false);
 
+  // Initialize the UI system
   ui.begin();
-  auto bounds = ui.typeText("Initializing");
 
-  ui.startBlinking(1000);
+  // Draw the menu with the PNG images
+  ui.drawMenu();
 
-  wifi.begin(WIFI_SSID, WIFI_PASSWORD);
-  wifi.connect();
-  wifi.syncTime();
-  Serial.println("WiFi connected");
-
-  ui.stopBlinking();
-  ui.wipeText(bounds);
-
-  terminalApi.begin(&wifi, "trm_test_5a684b12979177c46aac");
-
-  // ui.terminalAnimation();
-
+  // Rest of your setup code
   pinMode(PIN_SWITCH, INPUT);
 
   scale.begin(PIN_DT, PIN_SCK);
-
 #if CALIBRATION_MODE
   calibrate();
 #else
@@ -85,9 +91,46 @@ void setup()
 #endif
 }
 
+// Helper function to list files recursively
+void listFiles(const char *dirname)
+{
+  Serial.printf("Listing directory: %s\n", dirname);
+
+  fs::File root = LittleFS.open(dirname);
+  if (!root)
+  {
+    Serial.println("Failed to open directory");
+    return;
+  }
+  if (!root.isDirectory())
+  {
+    Serial.println("Not a directory");
+    return;
+  }
+
+  fs::File file = root.openNextFile();
+  while (file)
+  {
+    if (file.isDirectory())
+    {
+      Serial.print("  DIR : ");
+      Serial.println(file.name());
+      // Recursive call to list subdirectory
+      listFiles(file.name());
+    }
+    else
+    {
+      Serial.print("  FILE: ");
+      Serial.print(file.name());
+      Serial.print("  SIZE: ");
+      Serial.println(file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+
 void loop()
 {
-
   if (digitalRead(PIN_SWITCH) == HIGH)
   {
     if (scale.wait_ready_timeout(200))
@@ -153,7 +196,7 @@ void order()
   Serial.printf("Found %d products\n", products.size());
 
   // Simple example with just text and position
-  bounds = ui.typeText("Product: ");
+  auto bounds = ui.typeText("Product: ");
   delay(1000);
   ui.wipeText(bounds);
 

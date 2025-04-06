@@ -4,11 +4,13 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <Adafruit_GFX.h>
+#include "image_loader.h"
 
 #include "GeistMonoVariableFont_wght18.h"
 #include "GeistMonoVariableFont_wght16.h"
 #include "GeistMonoVariableFont_wght14.h"
 #include "GeistMonoVariableFont_wght12.h"
+#include "GeistMonoVariableFont_wght10.h"
 
 #define ACCENT_COLOR 0x02ff
 #define PRIMARY_COLOR TFT_WHITE
@@ -77,13 +79,24 @@ struct BlinkState
     void *userData; // Pointer to UI instance
 };
 
+struct Menu
+{
+    const char *upImage;
+    const char *selectImage;
+    const char *downImage;
+
+    String item1Text;
+    String item2Text;
+    String item3Text;
+};
+
 // Forward declaration of the FreeRTOS task function
-extern "C" void cursorBlinkTaskWrapper(void *parameter);
+extern "C" void
+cursorBlinkTaskWrapper(void *parameter);
 
 class UI
 {
 public:
-    // Constructor - requires reference to a TFT_eSPI object
     UI(TFT_eSPI &tftDisplay);
 
     // Initialize the UI
@@ -113,9 +126,15 @@ public:
     // Get current blink state
     bool isBlinking();
 
+    // Draws the left side menu
+    void drawMenu();
+
 private:
     // Reference to TFT display
     TFT_eSPI &tft;
+
+    // Image loader for loading PNG images
+    ImageLoader imageLoader;
 
     // FreeRTOS task handle for cursor blinking
     TaskHandle_t cursorBlinkTaskHandle;
@@ -128,6 +147,9 @@ private:
 
     // Friend function to allow access to private members from the C-style task function
     friend void cursorBlinkTaskWrapper(void *parameter);
+
+    Menu menu = {"/up.png", "/dot.png", "/down.png",
+                 "Item 1", "Item 2", "Item 3"};
 };
 
 #endif
