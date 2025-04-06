@@ -38,6 +38,16 @@ void setup()
 
   Serial.begin(115200);
 
+  ledStrip.begin();
+
+  for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
+  {
+    ledStrip.progress(progress);
+    delay(10);
+  }
+  delay(5000);
+  ledStrip.progress(0.0f);
+
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
@@ -68,10 +78,66 @@ void setup()
   delay(5000);
   wipeText(tft, bounds);
 
-  terminalAnimation(tft);
+  // clear cart
+  typeText(tft, "Clearing cart...", &GeistMono_VariableFont_wght18pt7b, 150);
+  if (terminalApi.clearCart())
+  {
+    Serial.println("Cart cleared");
+  }
+  else
+  {
+    Serial.println("Failed to clear cart");
+  }
+  wipeText(tft, bounds);
 
-  ledStrip.begin();
-  ledStrip.progress(0.0f);
+  // add first product to cart
+  typeText(tft, "Adding to cart...", &GeistMono_VariableFont_wght18pt7b, 150);
+  Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
+  if (cart)
+  {
+    Serial.println("Item added to cart");
+    Serial.printf("Subtotal: %d\n", cart->subtotal);
+    Serial.printf("Address ID: %s\n", cart->addressID.c_str());
+    Serial.printf("Card ID: %s\n", cart->cardID.c_str());
+
+    wipeText(tft, bounds);
+    tft.setTextColor(ACCENT_COLOR);
+    typeText(tft, "Cart subtotal: ", &GeistMono_VariableFont_wght18pt7b, 150);
+    tft.setTextColor(TFT_WHITE);
+    typeText(tft, String(cart->subtotal).c_str(), &GeistMono_VariableFont_wght18pt7b, 150, 0, bounds.y + bounds.height);
+    delay(5000);
+  }
+  else
+  {
+    Serial.println("Failed to add item to cart");
+  }
+  wipeText(tft, bounds);
+
+  // place order
+  typeText(tft, "Placing order...", &GeistMono_VariableFont_wght18pt7b, 150);
+  Order *order = terminalApi.convertCartToOrder();
+  if (order)
+  {
+    Serial.println("Order placed");
+    Serial.printf("Order ID: %s\n", order->id.c_str());
+    Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
+    Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
+    Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
+
+    wipeText(tft, bounds);
+    tft.setTextColor(ACCENT_COLOR);
+    typeText(tft, "Order ID: ", &GeistMono_VariableFont_wght18pt7b, 150);
+    tft.setTextColor(TFT_WHITE);
+    typeText(tft, order->id.c_str(), &GeistMono_VariableFont_wght18pt7b, 150, 0, bounds.y + bounds.height);
+    delay(5000);
+  }
+  else
+  {
+    Serial.println("Failed to place order");
+  }
+  wipeText(tft, bounds);
+
+  // terminalAnimation(tft);
 
   pinMode(PIN_SWITCH, INPUT);
 

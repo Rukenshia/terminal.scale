@@ -5,14 +5,14 @@ TerminalApi::TerminalApi()
 {
     // Default constructor
     wifiManager = nullptr;
-    token = nullptr;
 }
 
 void TerminalApi::begin(WiFiManager *wifiManager, const char *pat)
 {
     // Store WiFiManager and authentication token
     this->wifiManager = wifiManager;
-    this->token = pat;
+    this->tokenHeader = String("Bearer ");
+    this->tokenHeader += pat;
 }
 
 std::vector<Product> TerminalApi::getProducts()
@@ -30,17 +30,8 @@ std::vector<Product> TerminalApi::getProducts()
     String url = String(BASE_URL) + "/product";
     String response;
 
-    // Set up headers with authentication token
-    String headersStr = "Bearer ";
-    headersStr += token;
-
-    // Make GET request with headers
-    if (wifiManager->request(url.c_str(), "GET", "", response, headersStr.c_str()))
+    if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
     {
-        Serial.printf("Response: %s\n", response.c_str());
-        Serial.printf("Response length: %d\n", response.length());
-
-        // Parse JSON response
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, response);
 
@@ -51,7 +42,6 @@ std::vector<Product> TerminalApi::getProducts()
             return products;
         }
 
-        // Extract products from JSON
         JsonArray data = doc["data"].as<JsonArray>();
 
         for (JsonVariant productVariant : data)
@@ -65,7 +55,6 @@ std::vector<Product> TerminalApi::getProducts()
             product.order = productObj["order"].as<uint16_t>();
             product.subscription = productObj["subscription"].as<String>();
 
-            // Extract variants
             JsonArray variants = productObj["variants"].as<JsonArray>();
             for (JsonVariant variantVariant : variants)
             {
@@ -88,4 +77,217 @@ std::vector<Product> TerminalApi::getProducts()
     }
 
     return products;
+}
+
+// DELETE /cart
+bool TerminalApi::clearCart()
+{
+    // Make sure WiFi is connected
+    if (!wifiManager || !wifiManager->isConnected())
+    {
+        Serial.println("WiFi not connected or not initialized");
+        return false;
+    }
+
+    // Prepare request URL
+    String url = String(BASE_URL) + "/cart";
+    String response;
+
+    if (wifiManager->request(url.c_str(), "DELETE", "", response, tokenHeader.c_str()))
+    {
+        Serial.println("Cart cleared successfully");
+        return true;
+    }
+
+    Serial.println("Failed to clear cart");
+    return false;
+}
+
+// GET /cart
+Cart *TerminalApi::getCart()
+{
+    // Make sure WiFi is connected
+    if (!wifiManager || !wifiManager->isConnected())
+    {
+        Serial.println("WiFi not connected or not initialized");
+        return nullptr;
+    }
+
+    // Prepare request URL
+    String url = String(BASE_URL) + "/cart";
+    String response;
+
+    if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
+    {
+        Serial.printf("Response: %s\n", response.c_str());
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, response);
+
+        if (error)
+        {
+            Serial.print("JSON parsing failed: ");
+            Serial.println(error.c_str());
+            return nullptr;
+        }
+
+        JsonObject data = doc["data"].as<JsonObject>();
+        Cart *cart = new Cart();
+
+        cart->subtotal = data["subtotal"].as<uint32_t>();
+        cart->addressID = data["addressID"].as<String>();
+        cart->cardID = data["cardID"].as<String>();
+
+        JsonArray items = data["items"].as<JsonArray>();
+        for (JsonVariant itemVariant : items)
+        {
+            JsonObject itemObj = itemVariant.as<JsonObject>();
+            CartItem item;
+
+            item.id = itemObj["id"].as<String>();
+            item.productVariantID = itemObj["productVariantID"].as<String>();
+            item.quantity = itemObj["quantity"].as<uint32_t>();
+            item.subtotal = itemObj["subtotal"].as<uint32_t>();
+
+            cart->items.push_back(item);
+        }
+
+        return cart;
+    }
+
+    Serial.println("Failed to fetch cart");
+    return nullptr;
+}
+
+// PUT /cart/item
+Cart *TerminalApi::addItemToCart(const char *productVariantID, uint32_t quantity)
+{
+    // Make sure WiFi is connected
+    if (!wifiManager || !wifiManager->isConnected())
+    {
+        Serial.println("WiFi not connected or not initialized");
+        return nullptr;
+    }
+
+    // Prepare request URL
+    String url = String(BASE_URL) + "/cart/item";
+    String response;
+
+    // Create JSON payload
+    JsonDocument doc;
+    doc["productVariantID"] = productVariantID;
+    doc["quantity"] = quantity;
+
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    if (wifiManager->request(url.c_str(), "PUT", jsonString.c_str(), response, tokenHeader.c_str()))
+    {
+        Serial.printf("Response: %s\n", response.c_str());
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, response);
+
+        if (error)
+        {
+            Serial.print("JSON parsing failed: ");
+            Serial.println(error.c_str());
+            return nullptr;
+        }
+
+        JsonObject data = doc["data"].as<JsonObject>();
+        Cart *cart = new Cart();
+
+        cart->subtotal = data["subtotal"].as<uint32_t>();
+        cart->addressID = data["addressID"].as<String>();
+        cart->cardID = data["cardID"].as<String>();
+
+        JsonArray items = data["items"].as<JsonArray>();
+        for (JsonVariant itemVariant : items)
+        {
+            JsonObject itemObj = itemVariant.as<JsonObject>();
+            CartItem item;
+
+            item.id = itemObj["id"].as<String>();
+            item.productVariantID = itemObj["productVariantID"].as<String>();
+            item.quantity = itemObj["quantity"].as<uint32_t>();
+            item.subtotal = itemObj["subtotal"].as<uint32_t>();
+
+            cart->items.push_back(item);
+        }
+
+        return cart;
+    }
+
+    Serial.println("Failed to add item to cart");
+    return nullptr;
+}
+
+// POST /cart
+Order *TerminalApi::convertCartToOrder()
+{
+    // Make sure WiFi is connected
+    if (!wifiManager || !wifiManager->isConnected())
+    {
+        Serial.println("WiFi not connected or not initialized");
+        return nullptr;
+    }
+
+    // Prepare request URL
+    String url = String(BASE_URL) + "/cart/convert";
+    String response;
+
+    if (wifiManager->request(url.c_str(), "POST", "", response, tokenHeader.c_str()))
+    {
+        Serial.printf("Response: %s\n", response.c_str());
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, response);
+
+        if (error)
+        {
+            Serial.print("JSON parsing failed: ");
+            Serial.println(error.c_str());
+            return nullptr;
+        }
+
+        JsonObject data = doc["data"].as<JsonObject>();
+        Order *order = new Order();
+
+        order->id = data["id"].as<String>();
+        order->index = data["index"].as<uint16_t>();
+
+        JsonObject shipping = data["shipping"].as<JsonObject>();
+        order->shipping.name = shipping["name"].as<String>();
+        order->shipping.street1 = shipping["street1"].as<String>();
+        order->shipping.street2 = shipping["street2"].as<String>();
+        order->shipping.city = shipping["city"].as<String>();
+        order->shipping.province = shipping["province"].as<String>();
+        order->shipping.country = shipping["country"].as<String>();
+        order->shipping.zip = shipping["zip"].as<String>();
+        order->shipping.phone = shipping["phone"].as<String>();
+
+        JsonObject amount = data["amount"].as<JsonObject>();
+        order->amount.subtotal = amount["subtotal"].as<uint32_t>();
+        order->amount.shipping = amount["shipping"].as<uint32_t>();
+
+        JsonObject tracking = data["tracking"].as<JsonObject>();
+        order->tracking.service = tracking["service"].as<String>();
+        order->tracking.number = tracking["number"].as<String>();
+        order->tracking.url = tracking["url"].as<String>();
+
+        JsonArray items = data["items"].as<JsonArray>();
+        for (JsonVariant itemVariant : items)
+        {
+            JsonObject itemObj = itemVariant.as<JsonObject>();
+            OrderItem item;
+            item.id = itemObj["id"].as<String>();
+            item.amount = itemObj["amount"].as<uint32_t>();
+            item.quantity = itemObj["quantity"].as<uint32_t>();
+            item.productVariantID = itemObj["productVariantID"].as<String>();
+            order->items.push_back(item);
+        }
+
+        return order;
+    }
+
+    Serial.println("Failed to convert cart to order");
+    return nullptr;
 }

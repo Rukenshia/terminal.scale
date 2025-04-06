@@ -6,6 +6,8 @@
 #include <Adafruit_GFX.h>
 
 #include "GeistMonoVariableFont_wght18.h"
+#include "GeistMonoVariableFont_wght16.h"
+#include "GeistMonoVariableFont_wght12.h"
 
 #define ACCENT_COLOR 0x02ff
 #define PRIMARY_COLOR TFT_WHITE
