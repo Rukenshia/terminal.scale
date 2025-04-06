@@ -24,6 +24,7 @@ struct TextBounds
     int16_t cursorY;
     int16_t cursorWidth;
     int16_t cursorHeight;
+    int16_t yAdvance;
 };
 
 struct BlinkState
@@ -40,7 +41,7 @@ TextBounds
 typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int delay_ms = 150, int16_t x = -1, int16_t y = -1);
 
 // Wipe animation for text that was displayed with typeText
-void wipeText(TFT_eSPI &tft, const TextBounds &bounds, bool toLeft = true, int speed_ms = 1);
+void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms = 1);
 
 void terminalAnimation(TFT_eSPI &tft);
 

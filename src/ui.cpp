@@ -50,10 +50,10 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
 
     // Calculate font height - set a reasonable default if needed
     int16_t fontHeight = 32; // Default in case we can't get actual height
-    // if (font->yAdvance > 0)
-    // {
-    //     fontHeight = font->yAdvance;
-    // }
+    if (font->yAdvance > 0)
+    {
+        fontHeight = font->yAdvance;
+    }
 
     const int16_t cursorHeight = fontHeight + 8;
 
@@ -105,7 +105,9 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
     tft.setCursor(startX, textY);
     tft.print(text);
-    cursorX = startX + charWidth + 20; // Update cursor position
+    charWidth += tft.textWidth(String(text[textLength - 1]));
+
+    cursorX = startX + charWidth + 8;
     tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
     delay(delay_ms); // Wait for the last character to be drawn
 
@@ -119,52 +121,31 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     bounds.cursorY = cursorY;
     bounds.cursorWidth = cursorWidth;
     bounds.cursorHeight = cursorHeight;
+    bounds.yAdvance = font->yAdvance;
 
     return bounds;
 }
 
-void wipeText(TFT_eSPI &tft, const TextBounds &bounds, bool toLeft, int speed_ms)
+void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms)
 {
     int16_t cursorX = bounds.cursorX;
+    const int16_t wipeHeight = max(bounds.height, bounds.cursorHeight) + 8;
 
-    // If wiping direction is to the left (default)
-    if (toLeft)
+    // Smoothly sweep the cursor to the left
+    while (cursorX > bounds.x)
     {
-        // Smoothly sweep the cursor to the left
-        while (cursorX > bounds.x)
-        {
-            tft.drawFastVLine(cursorX + bounds.cursorWidth, bounds.cursorY, bounds.cursorHeight, BACKGROUND_COLOR);
-            cursorX--;
-            tft.drawFastVLine(cursorX, bounds.cursorY, bounds.cursorHeight, ACCENT_COLOR);
-            delay(speed_ms);
-        }
-    }
-    // If wiping direction is to the right
-    else
-    {
-        // First move cursor to the left side of the text
-        tft.fillRect(cursorX, bounds.cursorY, bounds.cursorWidth, bounds.cursorHeight, BACKGROUND_COLOR);
-        cursorX = bounds.x - bounds.cursorWidth;
-        tft.fillRect(cursorX, bounds.cursorY, bounds.cursorWidth, bounds.cursorHeight, ACCENT_COLOR);
-        delay(300);
-
-        // Smoothly sweep the cursor to the right
-        int16_t endX = bounds.x + bounds.width + bounds.cursorWidth;
-        while (cursorX < endX)
-        {
-            tft.drawFastVLine(cursorX - 1, bounds.cursorY, bounds.cursorHeight, BACKGROUND_COLOR);
-            cursorX++;
-            tft.drawFastVLine(cursorX + bounds.cursorWidth - 1, bounds.cursorY, bounds.cursorHeight, ACCENT_COLOR);
-            delay(speed_ms);
-        }
+        tft.drawFastVLine(cursorX + bounds.cursorWidth, bounds.cursorY, wipeHeight, BACKGROUND_COLOR);
+        cursorX--;
+        tft.drawFastVLine(cursorX, bounds.cursorY, bounds.cursorHeight, ACCENT_COLOR);
+        delay(speed_ms);
     }
 
     // Clear entire text area including cursor at the end
     tft.fillRect(
         bounds.x,
         bounds.cursorY,
-        bounds.width + bounds.cursorWidth + 20,
-        bounds.cursorHeight,
+        bounds.width + bounds.cursorWidth,
+        bounds.yAdvance,
         BACKGROUND_COLOR);
 }
 

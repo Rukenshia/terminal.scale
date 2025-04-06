@@ -31,6 +31,8 @@ LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
 
+#define MAIN_FONT &GeistMono_VariableFont_wght12pt7b
+
 void calibrate();
 
 void setup()
@@ -40,19 +42,19 @@ void setup()
 
   ledStrip.begin();
 
-  for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
-  {
-    ledStrip.progress(progress);
-    delay(10);
-  }
-  delay(5000);
+  // for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
+  // {
+  //   ledStrip.progress(progress);
+  //   delay(10);
+  // }
+  // delay(5000);
   ledStrip.progress(0.0f);
 
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
 
-  auto bounds = typeText(tft, "Initializing", &GeistMono_VariableFont_wght18pt7b, 150);
+  auto bounds = typeText(tft, "Initializing", MAIN_FONT, 150);
   startBlinking(tft, bounds, 1000);
 
   wifi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -70,16 +72,16 @@ void setup()
   Serial.printf("Found %d products\n", products.size());
 
   // show first product
-  bounds = typeText(tft, "Product: ", &GeistMono_VariableFont_wght18pt7b, 150);
+  bounds = typeText(tft, "Product: ", MAIN_FONT, 150);
   delay(1000);
   wipeText(tft, bounds);
   tft.setTextColor(ACCENT_COLOR);
-  typeText(tft, products[0].name.c_str(), &GeistMono_VariableFont_wght18pt7b, 150);
+  typeText(tft, products[0].name.c_str(), MAIN_FONT, 150);
   delay(5000);
   wipeText(tft, bounds);
 
   // clear cart
-  typeText(tft, "Clearing cart...", &GeistMono_VariableFont_wght18pt7b, 150);
+  typeText(tft, "Clearing cart...", MAIN_FONT, 150);
   if (terminalApi.clearCart())
   {
     Serial.println("Cart cleared");
@@ -91,7 +93,7 @@ void setup()
   wipeText(tft, bounds);
 
   // add first product to cart
-  typeText(tft, "Adding to cart...", &GeistMono_VariableFont_wght18pt7b, 150);
+  typeText(tft, "Adding to cart...", MAIN_FONT, 150);
   Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
   if (cart)
   {
@@ -102,9 +104,9 @@ void setup()
 
     wipeText(tft, bounds);
     tft.setTextColor(ACCENT_COLOR);
-    typeText(tft, "Cart subtotal: ", &GeistMono_VariableFont_wght18pt7b, 150);
+    typeText(tft, "Cart subtotal: ", MAIN_FONT, 150);
     tft.setTextColor(TFT_WHITE);
-    typeText(tft, String(cart->subtotal).c_str(), &GeistMono_VariableFont_wght18pt7b, 150, 0, bounds.y + bounds.height);
+    typeText(tft, String(cart->subtotal).c_str(), MAIN_FONT, 150, 0, bounds.y + bounds.height);
     delay(5000);
   }
   else
@@ -114,7 +116,7 @@ void setup()
   wipeText(tft, bounds);
 
   // place order
-  typeText(tft, "Placing order...", &GeistMono_VariableFont_wght18pt7b, 150);
+  typeText(tft, "Placing order...", MAIN_FONT, 150);
   Order *order = terminalApi.convertCartToOrder();
   if (order)
   {
@@ -126,9 +128,9 @@ void setup()
 
     wipeText(tft, bounds);
     tft.setTextColor(ACCENT_COLOR);
-    typeText(tft, "Order ID: ", &GeistMono_VariableFont_wght18pt7b, 150);
+    typeText(tft, "Order ID: ", MAIN_FONT, 150);
     tft.setTextColor(TFT_WHITE);
-    typeText(tft, order->id.c_str(), &GeistMono_VariableFont_wght18pt7b, 150, 0, bounds.y + bounds.height);
+    typeText(tft, order->id.c_str(), MAIN_FONT, 150, 0, bounds.y + bounds.height);
     delay(5000);
   }
   else
