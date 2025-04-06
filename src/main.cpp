@@ -30,6 +30,7 @@ TFT_eSPI tft = TFT_eSPI();
 LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
+UI ui = UI(tft);
 
 #define MAIN_FONT &GeistMono_VariableFont_wght12pt7b
 
@@ -37,109 +38,39 @@ void calibrate();
 
 void setup()
 {
-
   Serial.begin(115200);
 
   ledStrip.begin();
 
-  // for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
-  // {
-  //   ledStrip.progress(progress);
-  //   delay(10);
-  // }
-  // delay(5000);
+  for (float progress = 0.0f; progress <= 1.0f; progress += 0.01f)
+  {
+    ledStrip.progress(progress);
+    delay(10);
+  }
+  delay(5000);
   ledStrip.progress(0.0f);
 
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
+  tft.setTextWrap(false);
 
-  auto bounds = typeText(tft, "Initializing", MAIN_FONT, 150);
-  startBlinking(tft, bounds, 1000);
+  ui.begin();
+  auto bounds = ui.typeText("Initializing");
+
+  ui.startBlinking(1000);
 
   wifi.begin(WIFI_SSID, WIFI_PASSWORD);
   wifi.connect();
   wifi.syncTime();
   Serial.println("WiFi connected");
 
-  stopBlinking();
-  wipeText(tft, bounds);
+  ui.stopBlinking();
+  ui.wipeText(bounds);
 
   terminalApi.begin(&wifi, "trm_test_5a684b12979177c46aac");
 
-  Serial.println("Fetching products...");
-  std::vector<Product> products = terminalApi.getProducts();
-  Serial.printf("Found %d products\n", products.size());
-
-  // show first product
-  bounds = typeText(tft, "Product: ", MAIN_FONT, 150);
-  delay(1000);
-  wipeText(tft, bounds);
-  tft.setTextColor(ACCENT_COLOR);
-  typeText(tft, products[0].name.c_str(), MAIN_FONT, 150);
-  delay(5000);
-  wipeText(tft, bounds);
-
-  // clear cart
-  typeText(tft, "Clearing cart...", MAIN_FONT, 150);
-  if (terminalApi.clearCart())
-  {
-    Serial.println("Cart cleared");
-  }
-  else
-  {
-    Serial.println("Failed to clear cart");
-  }
-  wipeText(tft, bounds);
-
-  // add first product to cart
-  typeText(tft, "Adding to cart...", MAIN_FONT, 150);
-  Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
-  if (cart)
-  {
-    Serial.println("Item added to cart");
-    Serial.printf("Subtotal: %d\n", cart->subtotal);
-    Serial.printf("Address ID: %s\n", cart->addressID.c_str());
-    Serial.printf("Card ID: %s\n", cart->cardID.c_str());
-
-    wipeText(tft, bounds);
-    tft.setTextColor(ACCENT_COLOR);
-    typeText(tft, "Cart subtotal: ", MAIN_FONT, 150);
-    tft.setTextColor(TFT_WHITE);
-    typeText(tft, String(cart->subtotal).c_str(), MAIN_FONT, 150, 0, bounds.y + bounds.height);
-    delay(5000);
-  }
-  else
-  {
-    Serial.println("Failed to add item to cart");
-  }
-  wipeText(tft, bounds);
-
-  // place order
-  typeText(tft, "Placing order...", MAIN_FONT, 150);
-  Order *order = terminalApi.convertCartToOrder();
-  if (order)
-  {
-    Serial.println("Order placed");
-    Serial.printf("Order ID: %s\n", order->id.c_str());
-    Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
-    Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
-    Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
-
-    wipeText(tft, bounds);
-    tft.setTextColor(ACCENT_COLOR);
-    typeText(tft, "Order ID: ", MAIN_FONT, 150);
-    tft.setTextColor(TFT_WHITE);
-    typeText(tft, order->id.c_str(), MAIN_FONT, 150, 0, bounds.y + bounds.height);
-    delay(5000);
-  }
-  else
-  {
-    Serial.println("Failed to place order");
-  }
-  wipeText(tft, bounds);
-
-  // terminalAnimation(tft);
+  // ui.terminalAnimation();
 
   pinMode(PIN_SWITCH, INPUT);
 
@@ -212,4 +143,84 @@ void calibrate()
 
   Serial.print("Calibration factor: ");
   Serial.println(calibrationFactor);
+}
+
+void order()
+{
+
+  Serial.println("Fetching products...");
+  std::vector<Product> products = terminalApi.getProducts();
+  Serial.printf("Found %d products\n", products.size());
+
+  // Simple example with just text and position
+  bounds = ui.typeText("Product: ");
+  delay(1000);
+  ui.wipeText(bounds);
+
+  ui.typeText(products[0].name.c_str(), accentText);
+  delay(5000);
+  ui.wipeText(bounds);
+
+  // clear cart - simplified call
+  bounds = ui.typeText("Clearing cart...", MAIN_FONT);
+  if (terminalApi.clearCart())
+  {
+    Serial.println("Cart cleared");
+  }
+  else
+  {
+    Serial.println("Failed to clear cart");
+  }
+  ui.wipeText(bounds);
+
+  bounds = ui.typeText("Adding to cart...");
+  Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
+  if (cart)
+  {
+    Serial.println("Item added to cart");
+    Serial.printf("Subtotal: %d\n", cart->subtotal);
+    Serial.printf("Address ID: %s\n", cart->addressID.c_str());
+    Serial.printf("Card ID: %s\n", cart->cardID.c_str());
+
+    ui.wipeText(bounds);
+
+    bounds = ui.typeText("Cart subtotal: ");
+
+    TextConfig subtotalConfig = ui.createTextConfig(MAIN_FONT);
+    subtotalConfig.y = bounds.y + bounds.height + 8;
+    subtotalConfig.enableCursor = false;
+    auto bounds2 = ui.typeText(String(cart->subtotal).c_str(), subtotalConfig);
+    ui.wipeText(bounds2);
+    ui.wipeText(bounds);
+
+    delay(5000);
+  }
+  else
+  {
+    Serial.println("Failed to add item to cart");
+  }
+  ui.wipeText(bounds);
+
+  // place order
+  bounds = ui.typeText("Placing order...");
+  Order *order = terminalApi.convertCartToOrder();
+  if (order)
+  {
+    Serial.println("Order placed");
+    Serial.printf("Order ID: %s\n", order->id.c_str());
+    Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
+    Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
+    Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
+
+    ui.wipeText(bounds);
+
+    ui.typeText("Order placed", accentText);
+
+    delay(5000);
+  }
+  else
+  {
+    Serial.println("Failed to place order");
+  }
+  ui.wipeText(bounds);
 }

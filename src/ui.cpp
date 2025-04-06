@@ -1,13 +1,28 @@
 #include "ui.h"
 
-// Global variables for cursor blinking
-TaskHandle_t cursorBlinkTaskHandle = NULL;
-BlinkState *blinkState = NULL;
-
-// FreeRTOS task for cursor blinking
-void cursorBlinkTask(void *parameter)
+// Global task wrapper function - needed because FreeRTOS tasks must be regular C functions
+void cursorBlinkTaskWrapper(void *parameter)
 {
     BlinkState *state = (BlinkState *)parameter;
+
+    // Safety check to prevent null pointer dereference
+    if (!state)
+    {
+        Serial.println("Error: Null state in cursorBlinkTask");
+        vTaskDelete(NULL); // Delete the current task
+        return;
+    }
+
+    // Extract UI instance pointer from the pointer stored in our state
+    UI *uiInstance = (UI *)(state->userData);
+
+    // Safety check for UI instance
+    if (!uiInstance)
+    {
+        Serial.println("Error: Null UI instance in cursorBlinkTask");
+        vTaskDelete(NULL); // Delete the current task
+        return;
+    }
 
     while (true)
     {
@@ -17,20 +32,22 @@ void cursorBlinkTask(void *parameter)
         if (state->isVisible)
         {
             // Draw cursor
-            state->tft.fillRect(state->bounds.cursorX,
-                                state->bounds.cursorY,
-                                state->bounds.cursorWidth,
-                                state->bounds.cursorHeight,
-                                ACCENT_COLOR);
+            uiInstance->tft.fillRect(
+                state->bounds.cursorX,
+                state->bounds.cursorY,
+                state->bounds.cursorWidth,
+                state->bounds.cursorHeight,
+                ACCENT_COLOR);
         }
         else
         {
             // Erase cursor
-            state->tft.fillRect(state->bounds.cursorX,
-                                state->bounds.cursorY,
-                                state->bounds.cursorWidth,
-                                state->bounds.cursorHeight,
-                                BACKGROUND_COLOR);
+            uiInstance->tft.fillRect(
+                state->bounds.cursorX,
+                state->bounds.cursorY,
+                state->bounds.cursorWidth,
+                state->bounds.cursorHeight,
+                BACKGROUND_COLOR);
         }
 
         // Delay for specified interval
@@ -38,21 +55,44 @@ void cursorBlinkTask(void *parameter)
     }
 }
 
-TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int delay_ms, int16_t x, int16_t y)
+// Constructor
+UI::UI(TFT_eSPI &tftDisplay)
+    : tft(tftDisplay),
+      cursorBlinkTaskHandle(NULL),
+      blinkState(NULL)
 {
-    tft.setTextColor(PRIMARY_COLOR);
+    // Initialize lastCursorState to zeros
+    memset(&lastCursorState, 0, sizeof(TextBounds));
+}
+
+// Initialize UI
+void UI::begin()
+{
+    // Nothing specific needed for initialization right now
+}
+
+// Create a default text configuration
+TextConfig UI::createTextConfig(const GFXfont *font)
+{
+    return TextConfig(font);
+}
+
+// New typing animation with configuration object
+TextBounds UI::typeText(const char *text, const TextConfig &config)
+{
+    tft.setTextColor(config.textColor);
     tft.setTextSize(1);
-    tft.setFreeFont(font);
+    tft.setFreeFont(config.font);
 
     const int textLength = strlen(text);
     int16_t charWidth = 0;
-    const int16_t cursorWidth = 20; // Width of the accent color box
+    const int16_t cursorWidth = config.cursorWidth;
 
     // Calculate font height - set a reasonable default if needed
     int16_t fontHeight = 32; // Default in case we can't get actual height
-    if (font->yAdvance > 0)
+    if (config.font && config.font->yAdvance > 0)
     {
-        fontHeight = font->yAdvance;
+        fontHeight = config.font->yAdvance;
     }
 
     const int16_t cursorHeight = fontHeight + 8;
@@ -61,8 +101,8 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     int16_t totalTextWidth = tft.textWidth(text) + cursorWidth + 20;
 
     // Set coordinates - center if not specified
-    int16_t startX = x;
-    int16_t textY = y;
+    int16_t startX = config.x;
+    int16_t textY = config.y;
     if (startX < 0)
     {
         // Center horizontally
@@ -105,13 +145,16 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
             tft.print(text[j]);
         }
 
-        // Draw the cursor at current position
+        // Draw the cursor at current position if enabled
         cursorX = startX + charWidth + 12;
 
         Serial.printf("Cursor position: %d\n", cursorX);
-        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
+        if (config.enableCursor)
+        {
+            tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
+        }
 
-        delay(delay_ms);
+        delay(config.delay_ms);
     }
 
     // Draw final character
@@ -123,8 +166,11 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
 
     cursorX = startX + charWidth + 12;
     Serial.printf("Cursor position: %d\n", cursorX);
-    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, ACCENT_COLOR);
-    delay(delay_ms); // Wait for the last character to be drawn
+    if (config.enableCursor)
+    {
+        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
+    }
+    delay(config.delay_ms); // Wait for the last character to be drawn
 
     // Create and return the TextBounds structure
     TextBounds bounds;
@@ -136,15 +182,18 @@ TextBounds typeText(TFT_eSPI &tft, const char *text, const GFXfont *font, int de
     bounds.cursorY = cursorY;
     bounds.cursorWidth = cursorWidth;
     bounds.cursorHeight = cursorHeight;
-    bounds.yAdvance = font->yAdvance;
+    bounds.yAdvance = config.font ? config.font->yAdvance : 0;
 
     Serial.printf("TextBounds: x=%d, y=%d, width=%d, height=%d, cursorX=%d, cursorY=%d\n",
                   bounds.x, bounds.y, bounds.width, bounds.height, bounds.cursorX, bounds.cursorY);
 
+    // Update the last cursor state
+    lastCursorState = bounds;
+
     return bounds;
 }
 
-void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms)
+void UI::wipeText(const TextBounds &bounds, int speed_ms)
 {
     int16_t cursorX = bounds.cursorX;
     const int16_t wipeHeight = max(bounds.height, bounds.cursorHeight) + 8;
@@ -172,40 +221,76 @@ void wipeText(TFT_eSPI &tft, const TextBounds &bounds, int speed_ms)
         BACKGROUND_COLOR);
 }
 
-void terminalAnimation(TFT_eSPI &tft)
+void UI::terminalAnimation()
 {
     tft.fillScreen(BACKGROUND_COLOR);
 
-    // Use the new typeText function with the original parameters
+    // Use the typeText function with the original parameters
     const char *text = "terminal";
-    TextBounds bounds = typeText(tft, text, &GeistMono_VariableFont_wght18pt7b, 150, 10, 50);
+    auto config = createTextConfig(&GeistMono_VariableFont_wght18pt7b);
+    TextBounds bounds = typeText(text, config);
 
     // Use wipeText for the exit animation
-    wipeText(tft, bounds);
+    wipeText(bounds);
 
     tft.fillScreen(BACKGROUND_COLOR);
 }
 
-void startBlinking(TFT_eSPI &tft, const TextBounds &bounds, unsigned long blinkInterval)
+// Start blinking cursor using the last cursor position
+void UI::startBlinking(unsigned long blinkInterval)
+{
+    // Check if we have a valid cursor state
+    if (lastCursorState.cursorWidth > 0 && lastCursorState.cursorHeight > 0)
+    {
+        startBlinkingAt(lastCursorState, blinkInterval);
+    }
+    else
+    {
+        // Warning: no previous cursor position available
+        Serial.println("Warning: No previous cursor position available for blinking");
+    }
+}
+
+// Start blinking cursor at a specific position
+void UI::startBlinkingAt(const TextBounds &bounds, unsigned long blinkInterval)
 {
     // Stop any existing blinking
     stopBlinking();
 
-    // Create new blink state
-    blinkState = new BlinkState{true, millis(), blinkInterval, bounds, tft};
+    // Create new blink state with direct pointer to this object instead of storing in yAdvance
+    blinkState = new BlinkState;
+    if (blinkState == NULL)
+    {
+        Serial.println("Error: Failed to allocate BlinkState");
+        return;
+    }
+
+    // Initialize the blink state
+    blinkState->isVisible = true;
+    blinkState->lastToggleTime = millis();
+    blinkState->blinkInterval = blinkInterval;
+    blinkState->bounds = bounds;
+    blinkState->userData = this; // Store pointer to UI instance directly
 
     // Create the blinking task
-    xTaskCreate(
-        cursorBlinkTask,       // Function that implements the task
-        "CursorBlink",         // Text name for the task
-        4096,                  // Stack size in words
-        (void *)blinkState,    // Parameter passed into the task
-        1,                     // Priority of the task (1 is low)
-        &cursorBlinkTaskHandle // Task handle
+    BaseType_t result = xTaskCreate(
+        cursorBlinkTaskWrapper, // Function that implements the task
+        "CursorBlink",          // Text name for the task
+        4096,                   // Stack size in words
+        (void *)blinkState,     // Parameter passed into the task
+        1,                      // Priority of the task (1 is low)
+        &cursorBlinkTaskHandle  // Task handle
     );
+
+    if (result != pdPASS)
+    {
+        Serial.println("Error: Failed to create cursor blink task");
+        delete blinkState;
+        blinkState = NULL;
+    }
 }
 
-void stopBlinking()
+void UI::stopBlinking()
 {
     if (cursorBlinkTaskHandle != NULL)
     {
@@ -216,7 +301,7 @@ void stopBlinking()
         // Clear the cursor if it's currently visible
         if (blinkState != NULL)
         {
-            blinkState->tft.fillRect(
+            tft.fillRect(
                 blinkState->bounds.cursorX,
                 blinkState->bounds.cursorY,
                 blinkState->bounds.cursorWidth,
@@ -229,7 +314,7 @@ void stopBlinking()
     }
 }
 
-bool isBlinking()
+bool UI::isBlinking()
 {
     return (cursorBlinkTaskHandle != NULL);
 }
