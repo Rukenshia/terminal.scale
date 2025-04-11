@@ -8,8 +8,12 @@
 #include "wifi.secret.h"
 #include "wifi_manager.h"
 #include "terminal_api.h"
+#include "preferences.h"
 
-#define PIN_SWITCH 17
+#define PIN_TERMINAL_BUTTON 17
+#define PIN_TOPLEFT 25
+#define PIN_TOPMIDDLE 32
+#define PIN_TOPRIGHT 33
 #define PIN_DT 27
 #define PIN_SCK 26
 
@@ -30,6 +34,7 @@ LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
 UI ui = UI(tft);
+PreferencesManager preferences = PreferencesManager();
 
 #define MAIN_FONT &GeistMono_VariableFont_wght12pt7b
 
@@ -38,6 +43,8 @@ void listFiles(const char *dirname);
 
 void setup()
 {
+  preferences.begin();
+
   // Initialize serial first for debugging
   Serial.begin(115200);
   Serial.println("\n\n=== Scale Application Starting ===");
@@ -79,7 +86,10 @@ void setup()
   ui.drawMenu();
 
   // Rest of your setup code
-  pinMode(PIN_SWITCH, INPUT);
+  pinMode(PIN_TERMINAL_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_TOPLEFT, INPUT_PULLUP);
+  pinMode(PIN_TOPMIDDLE, INPUT_PULLUP);
+  pinMode(PIN_TOPRIGHT, INPUT_PULLUP);
 
   scale.begin(PIN_DT, PIN_SCK);
 #if CALIBRATION_MODE
@@ -131,7 +141,23 @@ void listFiles(const char *dirname)
 
 void loop()
 {
-  if (digitalRead(PIN_SWITCH) == HIGH)
+
+  // show state of all buttons
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE);
+  tft.setFreeFont(MAIN_FONT);
+  tft.setTextSize(1);
+
+  tft.setCursor(0, 20);
+  tft.printf("Left: %s\n", digitalRead(PIN_TOPLEFT) == LOW ? "Pressed" : "Released");
+  tft.printf("Middle: %s\n", digitalRead(PIN_TOPMIDDLE) == LOW ? "Pressed" : "Released");
+  tft.printf("Right: %s\n", digitalRead(PIN_TOPRIGHT) == LOW ? "Pressed" : "Released");
+  tft.printf("Terminal: %s\n", digitalRead(PIN_TERMINAL_BUTTON) == LOW ? "Pressed" : "Released");
+
+  delay(1000);
+
+  return;
+  if (digitalRead(PIN_TERMINAL_BUTTON) == LOW)
   {
     if (scale.wait_ready_timeout(200))
     {
@@ -164,7 +190,7 @@ void calibrate()
   Serial.println("Place a known weight on the scale.");
   Serial.println("Press the switch to start calibration.");
 
-  while (digitalRead(PIN_SWITCH) == LOW)
+  while (digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
   {
     // Wait for switch to be pressed
   }
