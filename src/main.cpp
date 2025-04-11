@@ -9,11 +9,9 @@
 #include "wifi_manager.h"
 #include "terminal_api.h"
 #include "preferences_manager.h"
+#include "buttons.h"
+#include "scale.h"
 
-#define PIN_TERMINAL_BUTTON 17
-#define PIN_TOPLEFT 25
-#define PIN_TOPMIDDLE 32
-#define PIN_TOPRIGHT 33
 #define PIN_DT 27
 #define PIN_SCK 26
 
@@ -32,15 +30,19 @@ WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
 UI ui = UI(tft);
 PreferencesManager preferences = PreferencesManager();
+Scale scaleManager(scale, tft, ui, preferences, PIN_DT, PIN_SCK);
 
-#define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
-
-void calibrate();
 void listFiles(const char *dirname);
 
 void setup()
 {
   Serial.begin(115200);
+
+  // Initialize the display
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextWrap(false);
 
   // Initialize LittleFS
   if (!LittleFS.begin(false))
@@ -67,46 +69,23 @@ void setup()
   ledStrip.begin();
   ledStrip.progress(0.5f);
 
-  // Initialize the display
-  tft.init();
-  tft.setRotation(1);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextWrap(false);
-
   // Initialize the UI system
   ui.begin();
 
-  // Draw the menu with the PNG images
-  ui.drawMenu();
+  // Initialize the scale manager
+  scaleManager.begin();
 
-  // Rest of your setup code
-  pinMode(PIN_TERMINAL_BUTTON, INPUT_PULLUP);
-  pinMode(PIN_TOPLEFT, INPUT_PULLUP);
-  pinMode(PIN_TOPMIDDLE, INPUT_PULLUP);
-  pinMode(PIN_TOPRIGHT, INPUT_PULLUP);
-
-  scale.begin(PIN_DT, PIN_SCK);
-
-  if (!preferences.isScaleCalibrated())
+  if (!scaleManager.isCalibrated())
   {
     Serial.println("Scale not calibrated. Starting calibration mode...");
-    calibrate();
+    scaleManager.calibrate();
   }
   else
   {
-    float calibrationFactor = preferences.getScaleCalibrationFactor();
-    Serial.printf("Using saved calibration factor: %.2f\n", calibrationFactor);
-    scale.set_scale(calibrationFactor);
-
-    // We should always go back to our known zero offset
-    long zeroOffset = preferences.getScaleZeroOffset();
-    Serial.printf("Using saved zero offset: %ld\n", zeroOffset);
-
-    scale.set_offset(zeroOffset);
-    scale.tare(); // Reset the scale to 0
-    Serial.println("Scale calibrated and ready to use");
-
     ui.terminalAnimation();
+
+    ui.menu->selectMenu(MAIN_MENU);
+    ui.menu->draw();
   }
 }
 
@@ -150,14 +129,23 @@ void listFiles(const char *dirname)
 
 void loop()
 {
+  // Check for calibration requests first
+  if (scaleManager.checkCalibrationRequest())
+  {
+    // If calibration was performed, we don't need to do anything else in this loop iteration
+    return;
+  }
+
+  ui.loop();
+
   if (digitalRead(PIN_TOPMIDDLE) == LOW)
   {
-    if (scale.wait_ready_timeout(200))
-    {
-      Serial.println("Switch pressed, reading weight...");
-      float reading = scale.get_units(20);
-      Serial.printf("Weight: %.2f g\n", reading);
+    Serial.println("Switch pressed, reading weight...");
+    float reading = scaleManager.readWeight(20);
+    Serial.printf("Weight: %.2f g\n", reading);
 
+    if (reading >= 0)
+    {
       tft.fillScreen(TFT_BLACK);
       tft.setTextColor(TFT_WHITE);
       tft.setTextSize(2);
@@ -168,101 +156,12 @@ void loop()
       delay(1000); // Wait for a second before the next reading
     }
   }
-  else
-  {
-  }
+
   delay(100); // Small delay to avoid flooding the serial output
-}
-
-void calibrate()
-{
-  scale.set_scale(); // Set the scale to the default calibration factor
-  scale.tare();      // Reset the scale to 0
-
-  // Clear the screen and show initial instructions
-  tft.fillScreen(TFT_BLACK);
-
-  TextConfig instructionConfig = ui.createTextConfig(MAIN_FONT);
-  instructionConfig.y = 40;
-  instructionConfig.enableCursor = false;
-
-  auto bounds = ui.typeText("Calibration Mode", defaultText);
-  delay(1000);
-  ui.wipeText(bounds);
-
-  ui.typeText("1. Place a known weight", instructionConfig);
-
-  instructionConfig.y = 80;
-  auto buttonBounds = ui.typeText("2. Press any button", instructionConfig);
-
-  // Wait for button press
-  while (digitalRead(PIN_TOPLEFT) == HIGH &&
-         digitalRead(PIN_TOPMIDDLE) == HIGH &&
-         digitalRead(PIN_TOPRIGHT) == HIGH &&
-         digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
-  {
-    delay(100);
-  }
-
-  tft.fillScreen(TFT_BLACK);
-
-  instructionConfig.y = 80;
-  auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
-
-  // Take multiple readings for better accuracy
-  long reading = scale.get_units(10);
-
-  ui.wipeText(measuringBounds);
-
-  // Show the reading and prompt for weight input
-  char buf[32];
-  snprintf(buf, sizeof(buf), "Reading: %ld", reading);
-  instructionConfig.y = 80;
-  auto readingBounds = ui.typeText(buf, instructionConfig);
-
-  instructionConfig.y = 120;
-  ui.typeText("Enter weight in grams", instructionConfig);
-  instructionConfig.y = 160;
-  ui.typeText("via Serial Monitor", instructionConfig);
-
-  // Wait for serial input
-  while (Serial.available() == 0)
-  {
-    delay(100);
-  }
-
-  float knownWeight = Serial.parseFloat();
-  float calibrationFactor = reading / knownWeight;
-
-  long zeroOffset = scale.get_offset();
-
-  // Save calibration factor
-  preferences.setScaleCalibrationFactor(calibrationFactor);
-  preferences.setScaleZeroOffset(zeroOffset);
-
-  // Show completion message
-  tft.fillScreen(TFT_BLACK);
-  instructionConfig.y = 40;
-  bounds = ui.typeText("Calibrated", titleText);
-
-  char factorBuf[32];
-  snprintf(factorBuf, sizeof(factorBuf), "cf=%.2f, zo=%ld", calibrationFactor, zeroOffset);
-  instructionConfig.y = 80;
-  ui.typeText(factorBuf, instructionConfig);
-
-  instructionConfig.y = 120;
-  auto restartBounds = ui.typeText("Restarting...", instructionConfig);
-
-  // Apply the calibration factor
-  scale.set_scale(calibrationFactor);
-  scale.tare(); // Reset the scale to 0
-
-  delay(2000); // Show the completion message for 2 seconds
 }
 
 void order()
 {
-
   Serial.println("Fetching products...");
   std::vector<Product> products = terminalApi.getProducts();
   Serial.printf("Found %d products\n", products.size());
@@ -277,7 +176,7 @@ void order()
   ui.wipeText(bounds);
 
   // clear cart - simplified call
-  bounds = ui.typeText("Clearing cart...", MAIN_FONT);
+  bounds = ui.typeText("Clearing cart...", titleText);
   if (terminalApi.clearCart())
   {
     Serial.println("Cart cleared");

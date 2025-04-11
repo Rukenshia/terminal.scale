@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 #include <Adafruit_GFX.h>
 #include "image_loader.h"
+#include "menu.h"
 
 #include "GeistMonoVariableFont_wght18.h"
 #include "GeistMonoVariableFont_wght16.h"
@@ -16,6 +17,8 @@
 #define PRIMARY_COLOR TFT_WHITE
 #define BACKGROUND_COLOR TFT_BLACK
 #define TEXT_COLOR 0xBDD8
+
+#define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
 
 // Text bounds structure to store position and dimensions of typed text
 struct TextBounds
@@ -79,25 +82,17 @@ struct BlinkState
     void *userData; // Pointer to UI instance
 };
 
-struct Menu
-{
-    const char *upImage;
-    const char *selectImage;
-    const char *downImage;
-
-    String item1Text;
-    String item2Text;
-    String item3Text;
-};
-
 // Forward declaration of the FreeRTOS task function
 extern "C" void
 cursorBlinkTaskWrapper(void *parameter);
+
+class Menu;
 
 class UI
 {
 public:
     UI(TFT_eSPI &tftDisplay);
+    Menu *menu;
 
     // Initialize the UI
     void begin();
@@ -129,6 +124,8 @@ public:
     // Draws the left side menu
     void drawMenu();
 
+    void loop();
+
 private:
     // Reference to TFT display
     TFT_eSPI &tft;
@@ -147,9 +144,6 @@ private:
 
     // Friend function to allow access to private members from the C-style task function
     friend void cursorBlinkTaskWrapper(void *parameter);
-
-    Menu menu = {"/up.png", "/dot.png", "/down.png",
-                 "Item 1", "Item 2", "Item 3"};
 };
 
 #endif

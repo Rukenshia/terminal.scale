@@ -1,0 +1,165 @@
+#include "menu.h"
+#include "buttons.h"
+#include "scale.h"
+
+// Static instance pointer for interrupt handlers
+static Menu *instance = nullptr;
+struct ButtonInfo
+{
+    int pin;
+};
+
+// Use static objects so they persist after the constructor finishes
+static ButtonInfo bitl = {PIN_TOPLEFT};
+static ButtonInfo bitm = {PIN_TOPMIDDLE};
+static ButtonInfo bitr = {PIN_TOPRIGHT};
+static ButtonInfo bitb = {PIN_TERMINAL_BUTTON};
+
+// Reference to scale manager (declared extern since it's defined in main.cpp)
+extern Scale scaleManager;
+
+void IRAM_ATTR Menu::handleButtonPress(void *arg)
+{
+    if (instance)
+    {
+        instance->handlePress(((ButtonInfo *)arg)->pin);
+    }
+}
+
+// Constructor
+Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance)
+    : tft(tftDisplay), ui(uiInstance), imageLoader(tftDisplay)
+{
+
+    // Initialize menu type
+    current = MAIN_MENU;
+}
+
+void Menu::begin()
+{
+    // Store instance pointer for interrupt handlers
+    instance = this;
+
+    pinMode(PIN_TOPLEFT, INPUT_PULLUP);
+    pinMode(PIN_TOPMIDDLE, INPUT_PULLUP);
+    pinMode(PIN_TOPRIGHT, INPUT_PULLUP);
+    pinMode(PIN_TERMINAL_BUTTON, INPUT_PULLUP);
+
+    attachInterruptArg(PIN_TOPLEFT, handleButtonPress, &bitl, FALLING);
+    attachInterruptArg(PIN_TOPMIDDLE, handleButtonPress, &bitm, FALLING);
+    attachInterruptArg(PIN_TOPRIGHT, handleButtonPress, &bitr, FALLING);
+    attachInterruptArg(PIN_TERMINAL_BUTTON, handleButtonPress, &bitb, FALLING);
+}
+
+void Menu::handlePress(int buttonPin)
+{
+    switch (current)
+    {
+    case MAIN_MENU:
+        handlePressMainMenu(buttonPin);
+        break;
+    default:
+        Serial.println("Unknown menu type");
+        break;
+    }
+}
+
+void Menu::selectMenu(MenuType menuType, bool shouldDraw)
+{
+    // Clear the screen
+    tft.fillScreen(BACKGROUND_COLOR);
+
+    // Set the current menu type
+    current = menuType;
+
+    switch (menuType)
+    {
+    case MAIN_MENU:
+        menuItems[0].visible = false;
+        menuItems[1].visible = true;
+        menuItems[2].visible = false;
+
+        menuItems[1].text = "Calibrate";
+        break;
+    default:
+        Serial.println("Unknown Menu Selected");
+        break;
+    }
+
+    if (shouldDraw)
+    {
+        tainted = true;
+    }
+
+    draw();
+}
+
+void Menu::handlePressMainMenu(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPMIDDLE:
+        // Request calibration instead of directly calling calibrate()
+        // This is safe to call from an interrupt context
+        scaleManager.requestCalibration();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::draw()
+{
+
+    if (!tainted)
+    {
+        return;
+    }
+
+    tainted = false;
+
+    // Clear the top menu area
+    tft.fillRect(0, 0, tft.width(), 60, BACKGROUND_COLOR);
+
+    // Define positions for the menu icons
+    const int16_t iconWidth = 24;  // Estimated width of icons
+    const int16_t iconHeight = 24; // Estimated height of icons
+    const int16_t iconY = 20;      // Fixed Y position for all icons
+
+    for (int i = 0; i < 3; i++)
+    {
+        MenuItem &item = menuItems[i];
+
+        if (!item.visible)
+            continue;
+
+        // Load the image for the menu item
+        const char *imagePath = item.imagePath;
+
+        uint16_t imageWidth, imageHeight;
+
+        // Check if the image exists
+        if (!imageLoader.getImageInfo(imagePath, imageWidth, imageHeight))
+        {
+            Serial.printf("Image not found: %s\n", imagePath);
+            continue;
+        }
+
+        const int16_t width = tft.width() / 3;
+        const int16_t itemX = i * width;
+        const int16_t itemY = 4;
+        const int16_t imageX = itemX + (width - imageWidth) / 2;
+
+        // Draw the icon
+        imageLoader.drawPNG(imagePath, imageX, itemY);
+
+        // Draw the text below the icon
+        tft.setTextColor(TEXT_COLOR);
+        tft.setTextSize(1);
+        tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+
+        tft.setCursor(imageX + (imageWidth - tft.textWidth(item.text.c_str())) / 2, iconY + iconHeight + 10);
+        tft.print(item.text);
+    }
+}

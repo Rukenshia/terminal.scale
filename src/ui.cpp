@@ -62,6 +62,7 @@ UI::UI(TFT_eSPI &tftDisplay)
       cursorBlinkTaskHandle(NULL),
       blinkState(NULL)
 {
+    this->menu = new Menu(tftDisplay, *this);
     // Initialize lastCursorState to zeros
     memset(&lastCursorState, 0, sizeof(TextBounds));
 }
@@ -69,6 +70,8 @@ UI::UI(TFT_eSPI &tftDisplay)
 // Initialize UI
 void UI::begin()
 {
+    menu->begin();
+
     // Initialize the image loader and mount LittleFS
     if (!imageLoader.begin())
     {
@@ -222,6 +225,8 @@ void UI::terminalAnimation()
     auto config = createTextConfig(&GeistMono_VariableFont_wght18pt7b);
     TextBounds bounds = typeText(text, config);
 
+    delay(3000);
+
     // Use wipeText for the exit animation
     wipeText(bounds);
 
@@ -313,80 +318,10 @@ bool UI::isBlinking()
 
 void UI::drawMenu()
 {
-    // Clear the left side menu area
-    tft.fillRect(0, 0, 100, tft.height(), BACKGROUND_COLOR);
+    menu->draw();
+}
 
-    // Define positions for the menu icons
-    const int16_t iconWidth = 24;  // Estimated width of icons
-    const int16_t iconHeight = 24; // Estimated height of icons
-    const int16_t iconX = 25;      // Center icons in the left menu area
-
-    // Get the actual image dimensions if possible
-    uint16_t upWidth, upHeight;
-    uint16_t dotWidth, dotHeight;
-    uint16_t downWidth, downHeight;
-
-    // Try to get image dimensions - if it fails, use the estimates
-    if (imageLoader.getImageInfo(menu.upImage, upWidth, upHeight))
-    {
-        Serial.printf("Found up icon: %dx%d\n", upWidth, upHeight);
-    }
-    else
-    {
-        upWidth = iconWidth;
-        upHeight = iconHeight;
-        Serial.println("Could not get up icon dimensions");
-    }
-
-    if (imageLoader.getImageInfo(menu.selectImage, dotWidth, dotHeight))
-    {
-        Serial.printf("Found select icon: %dx%d\n", dotWidth, dotHeight);
-    }
-    else
-    {
-        dotWidth = iconWidth;
-        dotHeight = iconHeight;
-        Serial.println("Could not get select icon dimensions");
-    }
-
-    if (imageLoader.getImageInfo(menu.downImage, downWidth, downHeight))
-    {
-        Serial.printf("Found down icon: %dx%d\n", downWidth, downHeight);
-    }
-    else
-    {
-        downWidth = iconWidth;
-        downHeight = iconHeight;
-        Serial.println("Could not get down icon dimensions");
-    }
-
-    // Calculate positions to center icons horizontally in left menu area
-    const int16_t upX = iconX - (upWidth / 2);
-    const int16_t dotX = iconX - (dotWidth / 2);
-    const int16_t downX = iconX - (downWidth / 2);
-
-    // Position icons vertically
-    const int16_t upY = 20;                                // Top icon
-    const int16_t dotY = tft.height() / 2 - dotHeight / 2; // Middle icon
-    const int16_t downY = tft.height() - downHeight - 20;  // Bottom icon
-
-    // Draw the icons
-    Serial.println("Drawing menu icons");
-    imageLoader.drawPNG(menu.upImage, upX, upY);
-    imageLoader.drawPNG(menu.selectImage, dotX, dotY);
-    imageLoader.drawPNG(menu.downImage, downX, downY);
-
-    // Draw text next to the icons
-    tft.setTextColor(TEXT_COLOR);
-    tft.setTextSize(1);
-    tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
-    auto fontHeight = tft.fontHeight();
-
-    tft.setCursor(iconX + 30, upY + iconHeight - 14 / 2);
-    tft.print(menu.item1Text);
-
-    tft.setCursor(iconX + 30, dotY + iconHeight - 14 / 2);
-    tft.print(menu.item2Text);
-    tft.setCursor(iconX + 30, downY + iconHeight - 14 / 2);
-    tft.print(menu.item3Text);
+void UI::loop()
+{
+    drawMenu();
 }

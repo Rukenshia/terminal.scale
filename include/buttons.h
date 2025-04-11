@@ -1,0 +1,5 @@
+
+#define PIN_TERMINAL_BUTTON 17
+#define PIN_TOPLEFT 25
+#define PIN_TOPMIDDLE 32
+#define PIN_TOPRIGHT 33
