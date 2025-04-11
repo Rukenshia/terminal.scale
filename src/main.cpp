@@ -40,11 +40,7 @@ void listFiles(const char *dirname);
 
 void setup()
 {
-  preferences.begin();
-
-  // Initialize serial first for debugging
   Serial.begin(115200);
-  Serial.println("\n\n=== Scale Application Starting ===");
 
   // Initialize LittleFS
   if (!LittleFS.begin(false))
@@ -69,6 +65,7 @@ void setup()
 
   // Initialize LED strip
   ledStrip.begin();
+  ledStrip.progress(0.5f);
 
   // Initialize the display
   tft.init();
@@ -100,7 +97,16 @@ void setup()
     float calibrationFactor = preferences.getScaleCalibrationFactor();
     Serial.printf("Using saved calibration factor: %.2f\n", calibrationFactor);
     scale.set_scale(calibrationFactor);
+
+    // We should always go back to our known zero offset
+    long zeroOffset = preferences.getScaleZeroOffset();
+    Serial.printf("Using saved zero offset: %ld\n", zeroOffset);
+
+    scale.set_offset(zeroOffset);
     scale.tare(); // Reset the scale to 0
+    Serial.println("Scale calibrated and ready to use");
+
+    ui.terminalAnimation();
   }
 }
 
@@ -198,7 +204,8 @@ void calibrate()
     delay(100);
   }
 
-  ui.wipeText(buttonBounds);
+  tft.fillScreen(TFT_BLACK);
+
   instructionConfig.y = 80;
   auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
 
@@ -227,16 +234,19 @@ void calibrate()
   float knownWeight = Serial.parseFloat();
   float calibrationFactor = reading / knownWeight;
 
+  long zeroOffset = scale.get_offset();
+
   // Save calibration factor
   preferences.setScaleCalibrationFactor(calibrationFactor);
+  preferences.setScaleZeroOffset(zeroOffset);
 
   // Show completion message
   tft.fillScreen(TFT_BLACK);
   instructionConfig.y = 40;
-  bounds = ui.typeText("Calibration Complete!", titleText);
+  bounds = ui.typeText("Calibrated", titleText);
 
   char factorBuf[32];
-  snprintf(factorBuf, sizeof(factorBuf), "Factor: %.2f", calibrationFactor);
+  snprintf(factorBuf, sizeof(factorBuf), "cf=%.2f, zo=%ld", calibrationFactor, zeroOffset);
   instructionConfig.y = 80;
   ui.typeText(factorBuf, instructionConfig);
 

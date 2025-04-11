@@ -4,9 +4,9 @@ PreferencesManager::PreferencesManager()
 {
 }
 
-void PreferencesManager::begin()
+void PreferencesManager::begin(bool readOnly)
 {
-    preferences.begin("scale", false);
+    preferences.begin("scale", readOnly);
 }
 
 void PreferencesManager::end()
@@ -16,25 +16,40 @@ void PreferencesManager::end()
 
 void PreferencesManager::setScaleCalibrationFactor(float factor)
 {
-    preferences.putFloat("calibration_factor", factor);
+    begin();
+    preferences.putFloat("cf", factor);
+    end();
 }
 
-void PreferencesManager::setScaleZeroFactor(float factor)
+void PreferencesManager::setScaleZeroOffset(long zeroOffset)
 {
-    preferences.putFloat("zero_factor", factor);
+    begin(true);
+    preferences.putFloat("zo", zeroOffset);
+    end();
 }
 
 float PreferencesManager::getScaleCalibrationFactor()
 {
-    return preferences.getFloat("calibration_factor", 0.0);
+    begin(true);
+    auto v = preferences.getFloat("cf", 0.0);
+    end();
+
+    return v;
 }
 
-float PreferencesManager::getScaleZeroFactor()
+long PreferencesManager::getScaleZeroOffset()
 {
-    return preferences.getFloat("zero_factor", 0.0);
+    begin(true);
+    auto v = preferences.getFloat("zo", 0.0);
+    end();
+
+    return v;
 }
 
 bool PreferencesManager::isScaleCalibrated()
 {
-    return preferences.isKey("calibration_factor");
+    begin(true);
+    bool isCalibrated = preferences.isKey("cf");
+    end();
+    return isCalibrated;
 }

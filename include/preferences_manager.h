@@ -11,15 +11,15 @@ private:
 
 public:
     PreferencesManager();
-    void begin();
+    void begin(bool readOnly = false);
     void end();
 
     bool isScaleCalibrated();
     void setScaleCalibrationFactor(float calibrationFactor);
-    void setScaleZeroFactor(float zeroFactor);
+    void setScaleZeroOffset(long zeroOffset);
 
     float getScaleCalibrationFactor();
-    float getScaleZeroFactor();
+    long getScaleZeroOffset();
 };
 
 #endif

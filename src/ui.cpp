@@ -112,7 +112,9 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
     const int16_t cursorHeight = fontHeight + 8;
 
     // Calculate text width for centering
-    int16_t totalTextWidth = tft.textWidth(text) + cursorWidth + 20;
+    // int16_t totalTextWidth = tft.textWidth(text) + cursorWidth + 20;
+    // int16_t totalTextWidth = tft.textWidth(text) + cursorWidth;
+    int16_t totalTextWidth = tft.textWidth(text);
 
     // Set coordinates - center if not specified
     int16_t startX = config.x;
@@ -130,60 +132,37 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
 
     const int16_t cursorY = textY - cursorHeight + 4;
     int16_t cursorX = startX;
+    int16_t cursorEndX = startX + cursorWidth;
 
     // Type out the text
-    charWidth = 0;
     for (int i = 0; i < textLength; i++)
     {
-        // Get the width of the current character
-        if (text[i] == ' ')
-        {
-            // Handle space character
-            charWidth += tft.textWidth("_");
-            continue;
-        }
-        else
-        {
-            charWidth += max(tft.textWidth(String(text[i])), minCharWidth);
-        }
 
-        Serial.printf("Drawing character: %c, width: %d\n", text[i], charWidth);
+        // Get total text width of all printed characters so far
+        String textSoFar = String(text).substring(0, i + 1);
+        int16_t charWidth = tft.textWidth(textSoFar);
+        cursorEndX = cursorX + cursorWidth;
+        Serial.printf("Drawing character: %c, total width: %d\n", text[i], charWidth);
 
         // Clear the previous cursor and text area
-        tft.fillRect(startX, cursorY, charWidth + cursorWidth, cursorHeight, BACKGROUND_COLOR);
+        tft.fillRect(startX, cursorY, cursorEndX, cursorHeight, BACKGROUND_COLOR);
 
         // Draw the text we've typed so far
         tft.setCursor(startX, textY);
-        for (int j = 0; j < i; j++)
-        {
-            tft.print(text[j]);
-        }
+        tft.print(textSoFar);
 
         // During typing animation, always show cursor
         cursorX = startX + charWidth + 12;
         Serial.printf("Cursor position: %d\n", cursorX);
-        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
+
+        if (i < textLength - 1 || config.enableCursor)
+        {
+            // Draw the cursor
+            tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
+        }
 
         delay(config.delay_ms);
     }
-
-    // Draw final character and clear cursor
-    charWidth += tft.textWidth(String(text[textLength - 1]));
-    Serial.printf("Drawing character: %s, width: %d\n", text, charWidth);
-    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR); // Clear the cursor
-    tft.setCursor(startX, textY);
-    tft.print(text);
-
-    cursorX = startX + charWidth + 12;
-    Serial.printf("Cursor position: %d\n", cursorX);
-
-    // Only show final cursor if explicitly enabled
-    if (config.enableCursor)
-    {
-        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
-    }
-
-    delay(config.delay_ms); // Wait for the last character to be drawn
 
     // Create and return the TextBounds structure
     TextBounds bounds;
