@@ -144,23 +144,7 @@ void listFiles(const char *dirname)
 
 void loop()
 {
-
-  // show state of all buttons
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setFreeFont(MAIN_FONT);
-  tft.setTextSize(1);
-
-  tft.setCursor(0, 20);
-  tft.printf("Left: %s\n", digitalRead(PIN_TOPLEFT) == LOW ? "Pressed" : "Released");
-  tft.printf("Middle: %s\n", digitalRead(PIN_TOPMIDDLE) == LOW ? "Pressed" : "Released");
-  tft.printf("Right: %s\n", digitalRead(PIN_TOPRIGHT) == LOW ? "Pressed" : "Released");
-  tft.printf("Terminal: %s\n", digitalRead(PIN_TERMINAL_BUTTON) == LOW ? "Pressed" : "Released");
-
-  delay(1000);
-
-  return;
-  if (digitalRead(PIN_TERMINAL_BUTTON) == LOW)
+  if (digitalRead(PIN_TOPMIDDLE) == LOW)
   {
     if (scale.wait_ready_timeout(200))
     {
@@ -194,6 +178,7 @@ void calibrate()
 
   TextConfig instructionConfig = ui.createTextConfig(MAIN_FONT);
   instructionConfig.y = 40;
+  instructionConfig.enableCursor = false;
 
   auto bounds = ui.typeText("Calibration Mode", defaultText);
   delay(1000);

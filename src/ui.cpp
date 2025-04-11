@@ -106,6 +106,9 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
         fontHeight = config.font->yAdvance;
     }
 
+    // get min char width
+    const int16_t minCharWidth = tft.textWidth("A");
+
     const int16_t cursorHeight = fontHeight + 8;
 
     // Calculate text width for centering
@@ -141,7 +144,7 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
         }
         else
         {
-            charWidth += tft.textWidth(String(text[i]));
+            charWidth += max(tft.textWidth(String(text[i])), minCharWidth);
         }
 
         Serial.printf("Drawing character: %c, width: %d\n", text[i], charWidth);
@@ -156,31 +159,30 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
             tft.print(text[j]);
         }
 
-        // Draw the cursor at current position if enabled
+        // During typing animation, always show cursor
         cursorX = startX + charWidth + 12;
-
         Serial.printf("Cursor position: %d\n", cursorX);
-        if (config.enableCursor)
-        {
-            tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
-        }
+        tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
 
         delay(config.delay_ms);
     }
 
-    // Draw final character
+    // Draw final character and clear cursor
     charWidth += tft.textWidth(String(text[textLength - 1]));
     Serial.printf("Drawing character: %s, width: %d\n", text, charWidth);
-    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR);
+    tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, BACKGROUND_COLOR); // Clear the cursor
     tft.setCursor(startX, textY);
     tft.print(text);
 
     cursorX = startX + charWidth + 12;
     Serial.printf("Cursor position: %d\n", cursorX);
+
+    // Only show final cursor if explicitly enabled
     if (config.enableCursor)
     {
         tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
     }
+
     delay(config.delay_ms); // Wait for the last character to be drawn
 
     // Create and return the TextBounds structure
