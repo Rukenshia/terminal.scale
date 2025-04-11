@@ -1,4 +1,4 @@
-#include "preferences.h"
+#include "preferences_manager.h"
 
 PreferencesManager::PreferencesManager()
 {
@@ -14,12 +14,27 @@ void PreferencesManager::end()
     preferences.end();
 }
 
-bool PreferencesManager::isScaleCalibrated()
+void PreferencesManager::setScaleCalibrationFactor(float factor)
 {
-    return preferences.getBool("calibrated", false);
+    preferences.putFloat("calibration_factor", factor);
 }
 
-void PreferencesManager::setScaleCalibrated(bool calibrated)
+void PreferencesManager::setScaleZeroFactor(float factor)
 {
-    preferences.putBool("calibrated", calibrated);
+    preferences.putFloat("zero_factor", factor);
+}
+
+float PreferencesManager::getScaleCalibrationFactor()
+{
+    return preferences.getFloat("calibration_factor", 0.0);
+}
+
+float PreferencesManager::getScaleZeroFactor()
+{
+    return preferences.getFloat("zero_factor", 0.0);
+}
+
+bool PreferencesManager::isScaleCalibrated()
+{
+    return preferences.isKey("calibration_factor");
 }

@@ -8,7 +8,7 @@
 #include "wifi.secret.h"
 #include "wifi_manager.h"
 #include "terminal_api.h"
-#include "preferences.h"
+#include "preferences_manager.h"
 
 #define PIN_TERMINAL_BUTTON 17
 #define PIN_TOPLEFT 25
@@ -24,9 +24,6 @@
 #define PIN_RST 0
 #define PIN_BL 2
 
-#define CALIBRATION_MODE 0
-
-static const float CALIBRATION_FACTOR = 1103.88; // This value is obtained from the calibration process
 HX711 scale;
 
 TFT_eSPI tft = TFT_eSPI();
@@ -36,7 +33,7 @@ TerminalApi terminalApi = TerminalApi();
 UI ui = UI(tft);
 PreferencesManager preferences = PreferencesManager();
 
-#define MAIN_FONT &GeistMono_VariableFont_wght12pt7b
+#define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
 
 void calibrate();
 void listFiles(const char *dirname);
@@ -92,13 +89,19 @@ void setup()
   pinMode(PIN_TOPRIGHT, INPUT_PULLUP);
 
   scale.begin(PIN_DT, PIN_SCK);
-#if CALIBRATION_MODE
-  calibrate();
-#else
-  Serial.printf("Calibration factor: %.2f\n", CALIBRATION_FACTOR);
-  scale.set_scale(CALIBRATION_FACTOR);
-  scale.tare(); // Reset the scale to 0
-#endif
+
+  if (!preferences.isScaleCalibrated())
+  {
+    Serial.println("Scale not calibrated. Starting calibration mode...");
+    calibrate();
+  }
+  else
+  {
+    float calibrationFactor = preferences.getScaleCalibrationFactor();
+    Serial.printf("Using saved calibration factor: %.2f\n", calibrationFactor);
+    scale.set_scale(calibrationFactor);
+    scale.tare(); // Reset the scale to 0
+  }
 }
 
 // Helper function to list files recursively
@@ -186,32 +189,80 @@ void calibrate()
   scale.set_scale(); // Set the scale to the default calibration factor
   scale.tare();      // Reset the scale to 0
 
-  // Debug code to get scale calibration factor
-  Serial.println("Place a known weight on the scale.");
-  Serial.println("Press the switch to start calibration.");
+  // Clear the screen and show initial instructions
+  tft.fillScreen(TFT_BLACK);
 
-  while (digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
+  TextConfig instructionConfig = ui.createTextConfig(MAIN_FONT);
+  instructionConfig.y = 40;
+
+  auto bounds = ui.typeText("Calibration Mode", defaultText);
+  delay(1000);
+  ui.wipeText(bounds);
+
+  ui.typeText("1. Place a known weight", instructionConfig);
+
+  instructionConfig.y = 80;
+  auto buttonBounds = ui.typeText("2. Press any button", instructionConfig);
+
+  // Wait for button press
+  while (digitalRead(PIN_TOPLEFT) == HIGH &&
+         digitalRead(PIN_TOPMIDDLE) == HIGH &&
+         digitalRead(PIN_TOPRIGHT) == HIGH &&
+         digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
   {
-    // Wait for switch to be pressed
+    delay(100);
   }
-  Serial.println("Switch pressed, starting calibration...");
+
+  ui.wipeText(buttonBounds);
+  instructionConfig.y = 80;
+  auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
+
+  // Take multiple readings for better accuracy
   long reading = scale.get_units(10);
 
-  Serial.print("Reading: ");
-  Serial.println(reading);
+  ui.wipeText(measuringBounds);
 
-  Serial.println("Enter the known weight in grams:");
+  // Show the reading and prompt for weight input
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Reading: %ld", reading);
+  instructionConfig.y = 80;
+  auto readingBounds = ui.typeText(buf, instructionConfig);
+
+  instructionConfig.y = 120;
+  ui.typeText("Enter weight in grams", instructionConfig);
+  instructionConfig.y = 160;
+  ui.typeText("via Serial Monitor", instructionConfig);
+
+  // Wait for serial input
   while (Serial.available() == 0)
   {
-    // Wait for user input
+    delay(100);
   }
+
   float knownWeight = Serial.parseFloat();
-  Serial.print("Known weight: ");
-  Serial.println(knownWeight);
   float calibrationFactor = reading / knownWeight;
 
-  Serial.print("Calibration factor: ");
-  Serial.println(calibrationFactor);
+  // Save calibration factor
+  preferences.setScaleCalibrationFactor(calibrationFactor);
+
+  // Show completion message
+  tft.fillScreen(TFT_BLACK);
+  instructionConfig.y = 40;
+  bounds = ui.typeText("Calibration Complete!", titleText);
+
+  char factorBuf[32];
+  snprintf(factorBuf, sizeof(factorBuf), "Factor: %.2f", calibrationFactor);
+  instructionConfig.y = 80;
+  ui.typeText(factorBuf, instructionConfig);
+
+  instructionConfig.y = 120;
+  auto restartBounds = ui.typeText("Restarting...", instructionConfig);
+
+  // Apply the calibration factor
+  scale.set_scale(calibrationFactor);
+  scale.tare(); // Reset the scale to 0
+
+  delay(2000); // Show the completion message for 2 seconds
 }
 
 void order()
