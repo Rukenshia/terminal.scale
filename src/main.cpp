@@ -28,7 +28,7 @@ TFT_eSPI tft = TFT_eSPI();
 LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
-UI ui = UI(tft);
+UI ui = UI(tft, &ledStrip);
 PreferencesManager preferences = PreferencesManager();
 Scale scaleManager(scale, tft, ui, preferences, PIN_DT, PIN_SCK);
 
@@ -47,27 +47,12 @@ void setup()
   // Initialize LittleFS
   if (!LittleFS.begin(false))
   {
-    Serial.println("LittleFS mount failed! Formatting...");
-    if (!LittleFS.begin(true))
-    {
-      Serial.println("LittleFS mount failed even after formatting!");
-    }
-    else
-    {
-      Serial.println("LittleFS formatted and mounted successfully");
-    }
+    Serial.println("LittleFS mount failed!");
+    return;
   }
-  else
-  {
-    Serial.println("LittleFS mounted successfully");
-  }
-
-  // List files in the root directory to verify
-  listFiles("/");
 
   // Initialize LED strip
   ledStrip.begin();
-  ledStrip.progress(0.5f);
 
   // Initialize the UI system
   ui.begin();

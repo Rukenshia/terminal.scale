@@ -56,8 +56,9 @@ void cursorBlinkTaskWrapper(void *parameter)
 }
 
 // Constructor
-UI::UI(TFT_eSPI &tftDisplay)
+UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip)
     : tft(tftDisplay),
+      ledStrip(ledStrip),
       imageLoader(tftDisplay),
       cursorBlinkTaskHandle(NULL),
       blinkState(NULL)
@@ -76,12 +77,6 @@ void UI::begin()
     if (!imageLoader.begin())
     {
         Serial.println("Failed to initialize image loader");
-    }
-    else
-    {
-        Serial.println("Image loader initialized successfully");
-        // List all PNG files to verify they're available
-        imageLoader.listPNGFiles();
     }
 }
 
@@ -145,7 +140,7 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
         String textSoFar = String(text).substring(0, i + 1);
         int16_t charWidth = tft.textWidth(textSoFar);
         cursorEndX = cursorX + cursorWidth;
-        Serial.printf("Drawing character: %c, total width: %d\n", text[i], charWidth);
+        // Serial.printf("Drawing character: %c, total width: %d\n", text[i], charWidth);
 
         // Clear the previous cursor and text area
         tft.fillRect(startX, cursorY, cursorEndX, cursorHeight, BACKGROUND_COLOR);
@@ -156,7 +151,7 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
 
         // During typing animation, always show cursor
         cursorX = startX + charWidth + 12;
-        Serial.printf("Cursor position: %d\n", cursorX);
+        // Serial.printf("Cursor position: %d\n", cursorX);
 
         if (i < textLength - 1 || config.enableCursor)
         {
@@ -179,8 +174,8 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
     bounds.cursorHeight = cursorHeight;
     bounds.yAdvance = config.font ? config.font->yAdvance : 0;
 
-    Serial.printf("TextBounds: x=%d, y=%d, width=%d, height=%d, cursorX=%d, cursorY=%d\n",
-                  bounds.x, bounds.y, bounds.width, bounds.height, bounds.cursorX, bounds.cursorY);
+    // Serial.printf("TextBounds: x=%d, y=%d, width=%d, height=%d, cursorX=%d, cursorY=%d\n",
+    //               bounds.x, bounds.y, bounds.width, bounds.height, bounds.cursorX, bounds.cursorY);
 
     // Update the last cursor state
     lastCursorState = bounds;
@@ -218,6 +213,7 @@ void UI::wipeText(const TextBounds &bounds, int speed_ms)
 
 void UI::terminalAnimation()
 {
+    ledStrip->turnOnAnimation();
     tft.fillScreen(BACKGROUND_COLOR);
 
     // Use the typeText function with the original parameters
@@ -225,7 +221,9 @@ void UI::terminalAnimation()
     auto config = createTextConfig(&GeistMono_VariableFont_wght18pt7b);
     TextBounds bounds = typeText(text, config);
 
-    delay(3000);
+    delay(1500);
+    ledStrip->turnOffAnimation();
+    delay(500);
 
     // Use wipeText for the exit animation
     wipeText(bounds);

@@ -6,6 +6,7 @@
 #include <Adafruit_GFX.h>
 #include "image_loader.h"
 #include "menu.h"
+#include "led.h"
 
 #include "GeistMonoVariableFont_wght18.h"
 #include "GeistMonoVariableFont_wght16.h"
@@ -91,7 +92,7 @@ class Menu;
 class UI
 {
 public:
-    UI(TFT_eSPI &tftDisplay);
+    UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip);
     Menu *menu;
 
     // Initialize the UI
@@ -127,8 +128,8 @@ public:
     void loop();
 
 private:
-    // Reference to TFT display
     TFT_eSPI &tft;
+    LedStrip *ledStrip;
 
     // Image loader for loading PNG images
     ImageLoader imageLoader;
