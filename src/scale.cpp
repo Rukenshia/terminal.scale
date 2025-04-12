@@ -1,5 +1,6 @@
 #include "scale.h"
 #include "buttons.h"
+#include "ui.h"
 
 // Constructor
 Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, int dt_pin, int sck_pin)
@@ -13,6 +14,14 @@ Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesMan
 {
     calibrationFactor = 0.0;
     zeroOffset = 0;
+
+    xTaskCreate(
+        backgroundWeighingTask, // Function that implements the task
+        "BackgroundWeighing",   // Text name for the task
+        4096,                   // Stack size in words
+        this,                   // Parameter passed into the task
+        4,                      // Priority of the task (1 is low)
+        &backgroundWeighingTaskHandle);
 }
 
 void Scale::begin()
@@ -31,7 +40,9 @@ void Scale::begin()
 
         scale.set_scale(calibrationFactor);
         scale.set_offset(zeroOffset);
-        scale.tare();
+        // scale.tare();
+
+        hasBag = preferences.hasCoffeeBag();
 
         Serial.println("Scale calibrated and ready to use");
     }
@@ -65,13 +76,16 @@ void Scale::calibrate()
     // Safe to call from anywhere - encapsulates all UI and scale operations
     scale.set_scale(); // Set the scale to the default calibration factor
     scale.tare();      // Reset the scale to 0
+    preferences.setHasCoffeeBag(false);
 
     // Clear the screen and show initial instructions
     tft.fillScreen(TFT_BLACK);
 
     TextConfig instructionConfig = ui.createTextConfig(MAIN_FONT);
+    instructionConfig.x = 20;
     instructionConfig.y = 40;
     instructionConfig.enableCursor = false;
+    instructionConfig.delay_ms = 20;
 
     auto bounds = ui.typeText("Calibration", titleText);
     delay(1000);
@@ -150,22 +164,95 @@ void Scale::calibrate()
     instructionConfig.y = 120;
     auto restartBounds = ui.typeText("Restarting...", instructionConfig);
 
-    // Apply the calibration factor
-    scale.set_scale(calibrationFactor);
-    scale.tare(); // Reset the scale to 0
+    esp_restart();
+}
 
-    // Wait a moment before returning
-    delay(2000);
+void Scale::loadBag()
+{
+    tft.fillScreen(BACKGROUND_COLOR);
 
-    // Clear screen when finished
-    tft.fillScreen(TFT_BLACK);
+    TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
+    instructionConfig.y = tft.height() / 2 - 20;
+    instructionConfig.enableCursor = false;
+    instructionConfig.delay_ms = 20;
+
+    ui.typeText("Place 12oz bag", instructionConfig);
+
+    instructionConfig.y += instructionConfig.font->yAdvance + 12;
+    instructionConfig.font = &GeistMono_VariableFont_wght10pt7b;
+    ui.typeText("and press any button", instructionConfig);
+    instructionConfig.font = &GeistMono_VariableFont_wght12pt7b;
+
+    // Wait for button press
+    while (digitalRead(PIN_TOPLEFT) == HIGH &&
+           digitalRead(PIN_TOPMIDDLE) == HIGH &&
+           digitalRead(PIN_TOPRIGHT) == HIGH &&
+           digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
+    {
+        delay(100);
+    }
+
+    tft.fillScreen(BACKGROUND_COLOR);
+    instructionConfig.y = tft.height() / 2;
+    auto bounds = ui.typeText("Measuring...", instructionConfig);
+
+    // get reading
+    float reading = scale.get_units(20);
+    weightBeforeLoadBag = reading;
+
+    ui.wipeText(bounds);
+
+    bounds = ui.typeText((String(reading, 1) + " g").c_str(), instructionConfig);
+
+    instructionConfig.y += instructionConfig.font->yAdvance + 8;
+    instructionConfig.textColor = ACCENT_COLOR;
+    instructionConfig.font = &GeistMono_VariableFont_wght10pt7b;
+
+    ui.typeText((String("-") + String(TERMINAL_COFFEE_BAG_EMPTY_WEIGHT, 2) + " g (bag)").c_str(), instructionConfig);
+
+    ui.menu->clearButtons();
+    ui.menu->selectMenu(LOADING_BAG_CONFIRM);
+
+    // Wait for button press
+    while (true)
+    {
+        if (ui.menu->checkButtonEvents())
+        {
+            break;
+        }
+        delay(100);
+    }
+}
+
+void Scale::confirmLoadBag()
+{
+    tft.fillScreen(BACKGROUND_COLOR);
+
+    auto bounds = ui.typeText("Bag loaded", titleText);
+    delay(1000);
+    ui.wipeText(bounds);
+
+    preferences.setHasCoffeeBag(true);
+    hasBag = true;
+
+    ui.menu->clearButtons();
+    ui.menu->selectMenu(MAIN_MENU);
 }
 
 float Scale::readWeight(int samples)
 {
     if (scale.wait_ready_timeout(200))
     {
-        return scale.get_units(samples);
+        float reading = scale.get_units(samples);
+        lastReading = reading;
+
+        if (hasBag)
+        {
+            lastReading = reading - TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
+            return reading - TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
+        }
+
+        return reading;
     }
     return -1; // Error value
 }
@@ -188,4 +275,35 @@ float Scale::getCalibrationFactor()
 long Scale::getZeroOffset()
 {
     return zeroOffset;
+}
+
+void Scale::backgroundWeighingTask(void *parameter)
+{
+    Scale *scale = static_cast<Scale *>(parameter);
+
+    while (true)
+    {
+        // Read weight and update the display
+        float reading = scale->readWeight();
+        reading = round(reading * 10.0) / 10.0;
+
+        Serial.printf("hasBag=%d, reading=%.1f\n", scale->hasBag, reading);
+
+        if (scale->hasBag && reading < 0)
+        {
+            // Bag was removed from the plate. Start a timer (2 minutes) to wait for the bag to be put back
+            // If the timer expires, we need to jump over to the re-ordering screen
+
+            scale->bagRemovedFromSurface = true;
+            scale->bagRemovedTime = millis();
+        }
+        else if (scale->hasBag && scale->bagRemovedFromSurface)
+        {
+            // Bag was put back on the plate
+            scale->bagRemovedFromSurface = false;
+            scale->bagRemovedTime = 0;
+        }
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }

@@ -11,6 +11,7 @@
 #include "preferences_manager.h"
 #include "buttons.h"
 #include "scale.h"
+#include "debug.h"
 
 #define PIN_DT 27
 #define PIN_SCK 26
@@ -55,7 +56,7 @@ void setup()
   ledStrip.begin();
 
   // Initialize the UI system
-  ui.begin();
+  ui.begin(&scaleManager);
 
   // Initialize the scale manager
   scaleManager.begin();
@@ -67,7 +68,9 @@ void setup()
   }
   else
   {
+#ifndef FAST_STARTUP
     ui.terminalAnimation();
+#endif
 
     ui.menu->selectMenu(MAIN_MENU);
     ui.menu->draw();
@@ -121,28 +124,10 @@ void loop()
     return;
   }
 
+  // Process any pending button events - this is safer than handling in interrupts
+  ui.menu->checkButtonEvents();
+
   ui.loop();
-
-  if (digitalRead(PIN_TOPMIDDLE) == LOW)
-  {
-    Serial.println("Switch pressed, reading weight...");
-    float reading = scaleManager.readWeight(20);
-    Serial.printf("Weight: %.2f g\n", reading);
-
-    if (reading >= 0)
-    {
-      tft.fillScreen(TFT_BLACK);
-      tft.setTextColor(TFT_WHITE);
-      tft.setTextSize(2);
-      tft.drawCentreString("Weight:", tft.width() / 2, tft.height() / 2 - 20, 2);
-      tft.drawCentreString(String(reading, 2) + " g", tft.width() / 2, tft.height() / 2 + 20, 4);
-      tft.setTextSize(1);
-
-      delay(1000); // Wait for a second before the next reading
-    }
-  }
-
-  delay(100); // Small delay to avoid flooding the serial output
 }
 
 void order()

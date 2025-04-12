@@ -15,14 +15,40 @@ static ButtonInfo bitm = {PIN_TOPMIDDLE};
 static ButtonInfo bitr = {PIN_TOPRIGHT};
 static ButtonInfo bitb = {PIN_TERMINAL_BUTTON};
 
+// Added debounce variables
+constexpr unsigned long DEBOUNCE_TIME_MS = 200;                      // 200ms debounce time
+static volatile unsigned long lastInterruptTimes[4] = {0, 0, 0, 0};  // One per button
+static volatile bool buttonEvents[4] = {false, false, false, false}; // Button event flags
+
 // Reference to scale manager (declared extern since it's defined in main.cpp)
 extern Scale scaleManager;
 
 void IRAM_ATTR Menu::handleButtonPress(void *arg)
 {
-    if (instance)
+    if (!instance)
+        return;
+
+    ButtonInfo *btnInfo = (ButtonInfo *)arg;
+    int buttonIndex;
+
+    // Convert pin to array index
+    if (btnInfo->pin == PIN_TOPLEFT)
+        buttonIndex = 0;
+    else if (btnInfo->pin == PIN_TOPMIDDLE)
+        buttonIndex = 1;
+    else if (btnInfo->pin == PIN_TOPRIGHT)
+        buttonIndex = 2;
+    else if (btnInfo->pin == PIN_TERMINAL_BUTTON)
+        buttonIndex = 3;
+    else
+        return;
+
+    // Check if enough time has passed since the last interrupt
+    unsigned long currentTime = millis();
+    if (currentTime - lastInterruptTimes[buttonIndex] > DEBOUNCE_TIME_MS)
     {
-        instance->handlePress(((ButtonInfo *)arg)->pin);
+        lastInterruptTimes[buttonIndex] = currentTime;
+        buttonEvents[buttonIndex] = true; // Set flag for processing in the loop
     }
 }
 
@@ -51,6 +77,41 @@ void Menu::begin()
     attachInterruptArg(PIN_TERMINAL_BUTTON, handleButtonPress, &bitb, FALLING);
 }
 
+// Process any pending button events - call this from loop()
+bool Menu::checkButtonEvents()
+{
+    // Check if any button events occurred
+    bool eventOccurred = false;
+
+    // Check and process button events
+    if (buttonEvents[0])
+    {
+        eventOccurred = true;
+        buttonEvents[0] = false;
+        handlePress(PIN_TOPLEFT);
+    }
+    if (buttonEvents[1])
+    {
+        eventOccurred = true;
+        buttonEvents[1] = false;
+        handlePress(PIN_TOPMIDDLE);
+    }
+    if (buttonEvents[2])
+    {
+        eventOccurred = true;
+        buttonEvents[2] = false;
+        handlePress(PIN_TOPRIGHT);
+    }
+    if (buttonEvents[3])
+    {
+        eventOccurred = true;
+        buttonEvents[3] = false;
+        handlePress(PIN_TERMINAL_BUTTON);
+    }
+
+    return eventOccurred;
+}
+
 void Menu::handlePress(int buttonPin)
 {
     switch (current)
@@ -58,28 +119,45 @@ void Menu::handlePress(int buttonPin)
     case MAIN_MENU:
         handlePressMainMenu(buttonPin);
         break;
+    case LOADING_BAG_CONFIRM:
+        handlePressLoadingBagConfirm(buttonPin);
+        break;
     default:
         Serial.println("Unknown menu type");
         break;
     }
+
+    clearButtons();
 }
 
 void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 {
-    // Clear the screen
-    tft.fillScreen(BACKGROUND_COLOR);
-
     // Set the current menu type
     current = menuType;
 
     switch (menuType)
     {
     case MAIN_MENU:
-        menuItems[0].visible = false;
-        menuItems[1].visible = true;
-        menuItems[2].visible = false;
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot.png";
+        menuItems[0].text = "Load Bag";
 
-        menuItems[1].text = "Calibrate";
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot.png";
+        menuItems[2].text = "Calibrate";
+        break;
+    case LOADING_BAG_CONFIRM:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/up.png";
+        menuItems[0].text = "Confirm";
+
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/down.png";
+        menuItems[2].text = "Retake";
         break;
     default:
         Serial.println("Unknown Menu Selected");
@@ -98,10 +176,29 @@ void Menu::handlePressMainMenu(int buttonPin)
 {
     switch (buttonPin)
     {
-    case PIN_TOPMIDDLE:
+    case PIN_TOPLEFT:
+        scaleManager.loadBag();
+        break;
+    case PIN_TOPRIGHT:
         // Request calibration instead of directly calling calibrate()
         // This is safe to call from an interrupt context
         scaleManager.requestCalibration();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressLoadingBagConfirm(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        scaleManager.confirmLoadBag();
+        break;
+    case PIN_TOPRIGHT:
+        scaleManager.loadBag();
         break;
     default:
         Serial.println("Unknown Button Pressed");
@@ -138,28 +235,42 @@ void Menu::draw()
         const char *imagePath = item.imagePath;
 
         uint16_t imageWidth, imageHeight;
-
-        // Check if the image exists
-        if (!imageLoader.getImageInfo(imagePath, imageWidth, imageHeight))
-        {
-            Serial.printf("Image not found: %s\n", imagePath);
-            continue;
-        }
-
         const int16_t width = tft.width() / 3;
         const int16_t itemX = i * width;
         const int16_t itemY = 4;
-        const int16_t imageX = itemX + (width - imageWidth) / 2;
+        // default to center of the item
+        uint16_t centerX = itemX + (width - iconWidth) / 2;
 
-        // Draw the icon
-        imageLoader.drawPNG(imagePath, imageX, itemY);
+        if (imagePath)
+        {
+            Serial.println("Image path is null");
+
+            if (!imageLoader.getImageInfo(imagePath, imageWidth, imageHeight))
+            {
+                Serial.printf("Image not found: %s\n", imagePath);
+                continue;
+            }
+
+            const int16_t centerX = itemX + (width - imageWidth) / 2;
+
+            // Draw the icon
+            imageLoader.drawPNG(imagePath, centerX, itemY);
+        }
 
         // Draw the text below the icon
         tft.setTextColor(TEXT_COLOR);
         tft.setTextSize(1);
         tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
 
-        tft.setCursor(imageX + (imageWidth - tft.textWidth(item.text.c_str())) / 2, iconY + iconHeight + 10);
+        Serial.printf("text=%s x=%d y=%d\n", item.text.c_str(), centerX, iconY + iconHeight + 10);
+        tft.setCursor(centerX + (imageWidth - tft.textWidth(item.text.c_str())) / 2, iconY + iconHeight + 10);
         tft.print(item.text);
     }
+}
+
+void Menu::clearButtons()
+{
+    buttonEvents[0] = false;
+    buttonEvents[1] = false;
+    buttonEvents[2] = false;
 }

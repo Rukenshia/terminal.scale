@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "scale.h"
 
 // Global task wrapper function - needed because FreeRTOS tasks must be regular C functions
 void cursorBlinkTaskWrapper(void *parameter)
@@ -69,8 +70,9 @@ UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip)
 }
 
 // Initialize UI
-void UI::begin()
+void UI::begin(Scale *scaleManager)
 {
+    this->scaleManager = scaleManager;
     menu->begin();
 
     // Initialize the image loader and mount LittleFS
@@ -90,12 +92,11 @@ TextConfig UI::createTextConfig(const GFXfont *font)
 TextBounds UI::typeText(const char *text, const TextConfig &config)
 {
     tft.setTextColor(config.textColor);
-    tft.setTextSize(1);
     tft.setFreeFont(config.font);
+    tft.setTextSize(1);
 
     const int textLength = strlen(text);
-    int16_t charWidth = 0;
-    const int16_t cursorWidth = config.cursorWidth;
+    const int16_t cursorWidth = tft.textWidth("W");
 
     // Calculate font height - set a reasonable default if needed
     int16_t fontHeight = 32; // Default in case we can't get actual height
@@ -104,14 +105,11 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
         fontHeight = config.font->yAdvance;
     }
 
-    // get min char width
-    const int16_t minCharWidth = tft.textWidth("A");
-
-    const int16_t cursorHeight = fontHeight + 8;
+    // get min char width and space width
+    const int16_t spaceWidth = tft.textWidth("a b") - tft.textWidth("ab");
+    const int16_t cursorHeight = fontHeight;
 
     // Calculate text width for centering
-    // int16_t totalTextWidth = tft.textWidth(text) + cursorWidth + 20;
-    // int16_t totalTextWidth = tft.textWidth(text) + cursorWidth;
     int16_t totalTextWidth = tft.textWidth(text);
 
     // Set coordinates - center if not specified
@@ -128,57 +126,66 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
         textY = (tft.height() + fontHeight) / 2;
     }
 
-    const int16_t cursorY = textY - cursorHeight + 4;
+    const int16_t cursorY = textY - cursorHeight + 6;
     int16_t cursorX = startX;
-    int16_t cursorEndX = startX + cursorWidth;
+    const uint8_t cursorPadding = 4;
 
-    // Type out the text
+    TextBounds bounds;
+
+    // Type out the text character by character
     for (int i = 0; i < textLength; i++)
     {
+        // If cursor is visible, clear it before drawing the new character
+        if (i > 0 || config.enableCursor)
+        {
+            tft.fillRect(cursorX, cursorY, cursorWidth + cursorPadding, cursorHeight, BACKGROUND_COLOR);
+        }
 
-        // Get total text width of all printed characters so far
-        String textSoFar = String(text).substring(0, i + 1);
-        int16_t charWidth = tft.textWidth(textSoFar);
-        cursorEndX = cursorX + cursorWidth;
-        // Serial.printf("Drawing character: %c, total width: %d\n", text[i], charWidth);
+        // Calculate width of current character
+        int16_t singleCharWidth;
 
-        // Clear the previous cursor and text area
-        tft.fillRect(startX, cursorY, cursorEndX, cursorHeight, BACKGROUND_COLOR);
+        // Handle space and non-space characters differently
+        if (text[i] == ' ')
+        {
+            // For spaces, just advance the cursor position without trying to render anything
+            singleCharWidth = spaceWidth;
+        }
+        else
+        {
+            // For visible characters, render them and calculate their width
+            char currentChar[2] = {text[i], '\0'};
+            singleCharWidth = tft.textWidth(currentChar);
 
-        // Draw the text we've typed so far
-        tft.setCursor(startX, textY);
-        tft.print(textSoFar);
+            // Set cursor position and draw only this character
+            tft.setCursor(cursorX, textY);
+            tft.print(currentChar);
+        }
 
-        // During typing animation, always show cursor
-        cursorX = startX + charWidth + 12;
-        // Serial.printf("Cursor position: %d\n", cursorX);
+        // Update cursor position for next character
+        cursorX += singleCharWidth;
 
+        // Draw the cursor after the current character
         if (i < textLength - 1 || config.enableCursor)
         {
-            // Draw the cursor
-            tft.fillRect(cursorX, cursorY, cursorWidth, cursorHeight, config.cursorColor);
+            tft.fillRect(cursorX + cursorPadding, cursorY, cursorWidth, cursorHeight, config.cursorColor);
         }
+
+        // Create and return the TextBounds structure
+        bounds.x = startX;
+        bounds.y = textY;
+        bounds.width = totalTextWidth;
+        bounds.height = fontHeight;
+        bounds.cursorX = cursorX + cursorPadding;
+        bounds.cursorY = cursorY;
+        bounds.cursorWidth = cursorWidth;
+        bounds.cursorHeight = cursorHeight;
+        bounds.yAdvance = config.font ? config.font->yAdvance : 0;
+
+        // Update the last cursor state
+        lastCursorState = bounds;
 
         delay(config.delay_ms);
     }
-
-    // Create and return the TextBounds structure
-    TextBounds bounds;
-    bounds.x = startX;
-    bounds.y = textY;
-    bounds.width = charWidth;
-    bounds.height = fontHeight;
-    bounds.cursorX = cursorX;
-    bounds.cursorY = cursorY;
-    bounds.cursorWidth = cursorWidth;
-    bounds.cursorHeight = cursorHeight;
-    bounds.yAdvance = config.font ? config.font->yAdvance : 0;
-
-    // Serial.printf("TextBounds: x=%d, y=%d, width=%d, height=%d, cursorX=%d, cursorY=%d\n",
-    //               bounds.x, bounds.y, bounds.width, bounds.height, bounds.cursorX, bounds.cursorY);
-
-    // Update the last cursor state
-    lastCursorState = bounds;
 
     return bounds;
 }
@@ -268,13 +275,14 @@ void UI::startBlinkingAt(const TextBounds &bounds, unsigned long blinkInterval)
     blinkState->userData = this; // Store pointer to UI instance directly
 
     // Create the blinking task
-    BaseType_t result = xTaskCreate(
+    BaseType_t result = xTaskCreatePinnedToCore(
         cursorBlinkTaskWrapper, // Function that implements the task
         "CursorBlink",          // Text name for the task
         4096,                   // Stack size in words
         (void *)blinkState,     // Parameter passed into the task
-        1,                      // Priority of the task (1 is low)
-        &cursorBlinkTaskHandle  // Task handle
+        8,                      // Priority of the task (1 is low)
+        &cursorBlinkTaskHandle, // Task handle
+        1                       // needs to be pinned to core 1 because we are drawing on the display
     );
 
     if (result != pdPASS)
@@ -322,4 +330,75 @@ void UI::drawMenu()
 void UI::loop()
 {
     drawMenu();
+
+    if (scaleManager->bagRemovedFromSurface)
+    {
+        if (!drawnBagNotFound)
+        {
+            unsigned long currentTime = millis();
+            auto textConfig = createTextConfig(&GeistMono_VariableFont_wght14pt7b);
+            textConfig.y = tft.height() / 2 + titleText.font->yAdvance + 8;
+            textConfig.enableCursor = false;
+            // FIXME: should probably be a background task?
+            tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
+                         tft.width(), tft.height(), BACKGROUND_COLOR);
+            auto bounds = typeText("404", titleText);
+            typeText("Bag not found", textConfig);
+            startBlinkingAt(bounds);
+
+            drawnBagNotFound = true;
+        }
+
+        return;
+    }
+
+    if (drawnBagNotFound)
+    {
+        drawnBagNotFound = false;
+        tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
+                     tft.width(), tft.height(), BACKGROUND_COLOR);
+        stopBlinking();
+    }
+
+    drawWeight(scaleManager->lastReading);
+}
+
+void UI::drawWeight(float weight)
+{
+    // round to nearest 0.1g
+    weight = round(weight * 10.0) / 10.0;
+
+    if (weight == lastDrawnReading)
+    {
+        return;
+    }
+    lastDrawnReading = weight;
+
+    float progress = max(min(weight / TERMINAL_COFFEE_WEIGHT, 1.0f), 0.0f);
+    int barWidth = int(tft.width() * progress);
+    int barHeight = 20;
+
+    // Draw the weight in the center of the screen
+    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
+    tft.setTextColor(TEXT_COLOR);
+    tft.setTextSize(1);
+
+    auto text = String(weight, 1) + " g";
+    auto w = tft.textWidth(text.c_str());
+
+    // clear weight text area
+    tft.fillRect(0, (tft.height() / 2) - (GeistMono_VariableFont_wght18pt7b.yAdvance / 2) - 8,
+                 tft.width(), GeistMono_VariableFont_wght18pt7b.yAdvance + 16, BACKGROUND_COLOR);
+
+    tft.setCursor((tft.width() - w) / 2, (tft.height() / 2) + GeistMono_VariableFont_wght18pt7b.yAdvance / 2);
+    tft.print(text);
+
+    if (barWidth == lastProgressBarWidth)
+    {
+        return;
+    }
+    lastProgressBarWidth = barWidth;
+
+    tft.fillRect(0, tft.height() - barHeight, tft.width(), barHeight, BACKGROUND_COLOR);
+    tft.fillRect(0, tft.height() - barHeight, barWidth, barHeight, ACCENT_COLOR);
 }

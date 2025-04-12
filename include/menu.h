@@ -14,6 +14,7 @@ class Menu;
 enum MenuType
 {
     MAIN_MENU,
+    LOADING_BAG_CONFIRM,
 };
 
 struct MenuItem
@@ -39,12 +40,15 @@ private:
     };
 
     void handlePressMainMenu(int buttonPin);
+    void handlePressLoadingBagConfirm(int buttonPin);
 
 public:
     Menu(TFT_eSPI &tftDisplay, UI &uiInstance);
     MenuType current;
 
     void begin();
+    void clearButtons();
+    bool checkButtonEvents();
 
     void draw();
     void taint() { tainted = true; }

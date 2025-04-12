@@ -4,8 +4,13 @@
 #include <Arduino.h>
 #include <HX711.h>
 #include <TFT_eSPI.h>
-#include "ui.h"
+
+class UI;
 #include "preferences_manager.h"
+
+#define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 16.0f
+#define TERMINAL_COFFEE_WEIGHT 340.0f // 12oz
+#define TERMINAL_COFFEE_BAG_WEIGHT TERMINAL_COFFEE_WEIGHT + TERMINAL_COFFEE_BAG_EMPTY_WEIGHT
 
 class Scale
 {
@@ -26,8 +31,20 @@ private:
     // Flag for safely requesting calibration from any context
     volatile bool calibrationRequested;
 
+    // Weight measured before confirming load bag
+    float weightBeforeLoadBag = 0.0f;
+
+    TaskHandle_t backgroundWeighingTaskHandle = NULL;
+
 public:
     Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, int dt_pin, int sck_pin);
+
+    bool hasBag = false;
+    float lastReading = 0.0f;
+
+    bool bagRemovedFromSurface = false;
+    unsigned long bagRemovedTime = 0;
+    
 
     // Initialize the scale
     void begin();
@@ -42,7 +59,7 @@ public:
     bool checkCalibrationRequest();
 
     // Read weight from scale
-    float readWeight(int samples = 20);
+    float readWeight(int samples = 10);
 
     // Tare the scale (set to zero)
     void tare();
@@ -55,6 +72,11 @@ public:
 
     // Get zero offset
     long getZeroOffset();
+
+    void loadBag();
+    void confirmLoadBag();
+
+    static void backgroundWeighingTask(void *parameter);
 };
 
 #endif

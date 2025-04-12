@@ -20,6 +20,9 @@ public:
 
     float getScaleCalibrationFactor();
     long getScaleZeroOffset();
+
+    bool hasCoffeeBag();
+    void setHasCoffeeBag(bool hasCoffeeBag);
 };
 
 #endif

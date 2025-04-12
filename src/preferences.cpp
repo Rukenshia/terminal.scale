@@ -23,8 +23,8 @@ void PreferencesManager::setScaleCalibrationFactor(float factor)
 
 void PreferencesManager::setScaleZeroOffset(long zeroOffset)
 {
-    begin(true);
-    preferences.putFloat("zo", zeroOffset);
+    begin();
+    preferences.putLong("zo", zeroOffset);
     end();
 }
 
@@ -40,7 +40,7 @@ float PreferencesManager::getScaleCalibrationFactor()
 long PreferencesManager::getScaleZeroOffset()
 {
     begin(true);
-    auto v = preferences.getFloat("zo", 0.0);
+    auto v = preferences.getLong("zo", 0.0);
     end();
 
     return v;
@@ -52,4 +52,19 @@ bool PreferencesManager::isScaleCalibrated()
     bool isCalibrated = preferences.isKey("cf");
     end();
     return isCalibrated;
+}
+
+bool PreferencesManager::hasCoffeeBag()
+{
+    begin(true);
+    bool hasCoffeeBag = preferences.getBool("bag", false);
+    end();
+    return hasCoffeeBag;
+}
+
+void PreferencesManager::setHasCoffeeBag(bool hasCoffeeBag)
+{
+    begin();
+    preferences.putBool("bag", hasCoffeeBag);
+    end();
 }
