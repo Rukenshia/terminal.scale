@@ -221,12 +221,17 @@ void ImageLoader::drawPNGLine(PNGDRAW *pDraw)
 {
     // Allocate a line buffer for the image line
     uint16_t lineBuffer[MAX_IMAGE_WIDTH];
+    uint8_t maskBuffer[1 + MAX_IMAGE_WIDTH / 8];
 
     // Get a line of pixels from the PNG decoder
     png.getLineAsRGB565(pDraw, lineBuffer, PNG_RGB565_LITTLE_ENDIAN, 0xffffffff);
 
-    // Write the line to the TFT display
-    tft.pushImage(xPos, yPos + pDraw->y, pDraw->iWidth, 1, lineBuffer);
+    if (png.getAlphaMask(pDraw, maskBuffer, 255))
+    {
+
+        // Write the line to the TFT display
+        tft.pushMaskedImage(xPos, yPos + pDraw->y, pDraw->iWidth, 1, lineBuffer, maskBuffer);
+        }
 }
 
 // File system callback functions

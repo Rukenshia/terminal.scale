@@ -14,6 +14,7 @@ class Menu;
 enum MenuType
 {
     MAIN_MENU,
+    SELECT_BAG,
     LOADING_BAG_CONFIRM,
 };
 
@@ -29,7 +30,7 @@ class Menu
 private:
     TFT_eSPI &tft;
     UI &ui;
-    ImageLoader imageLoader;
+    ImageLoader &imageLoader;
 
     bool tainted = false;
 
@@ -41,9 +42,10 @@ private:
 
     void handlePressMainMenu(int buttonPin);
     void handlePressLoadingBagConfirm(int buttonPin);
+    void handlePressSelectBag(int buttonPin);
 
 public:
-    Menu(TFT_eSPI &tftDisplay, UI &uiInstance);
+    Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance);
     MenuType current;
 
     void begin();

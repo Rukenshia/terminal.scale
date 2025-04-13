@@ -2,12 +2,12 @@
 #include "buttons.h"
 #include "ui.h"
 
-// Constructor
-Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, int dt_pin, int sck_pin)
+Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin)
     : scale(scaleModule),
       tft(display),
       ui(uiSystem),
       preferences(prefs),
+      terminalApi(terminalApi),
       PIN_DT(dt_pin),
       PIN_SCK(sck_pin),
       calibrationRequested(false)
@@ -16,17 +16,16 @@ Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesMan
     zeroOffset = 0;
 
     xTaskCreate(
-        backgroundWeighingTask, // Function that implements the task
-        "BackgroundWeighing",   // Text name for the task
-        4096,                   // Stack size in words
-        this,                   // Parameter passed into the task
-        4,                      // Priority of the task (1 is low)
+        backgroundWeighingTask,
+        "BackgroundWeighing",
+        4096,
+        this,
+        4,
         &backgroundWeighingTaskHandle);
 }
 
 void Scale::begin()
 {
-    // Initialize the scale
     scale.begin(PIN_DT, PIN_SCK);
 
     // If calibration data exists, load it
@@ -40,9 +39,14 @@ void Scale::begin()
 
         scale.set_scale(calibrationFactor);
         scale.set_offset(zeroOffset);
-        // scale.tare();
+        // not taring because the scale is expected to be constantly loaded and we want to
+        // know the total weight placed on the scale, not relative to startup
 
         hasBag = preferences.hasCoffeeBag();
+        if (hasBag)
+        {
+            bagName = preferences.getCoffeeBagName();
+        }
 
         Serial.println("Scale calibrated and ready to use");
     }
@@ -52,20 +56,17 @@ void Scale::begin()
     }
 }
 
-// Safe to call from any context including interrupts
 void Scale::requestCalibration()
 {
-    // Set the flag to request calibration
     calibrationRequested = true;
 }
 
-// Check and handle pending calibration request - call from main loop
 bool Scale::checkCalibrationRequest()
 {
     if (calibrationRequested)
     {
-        calibrationRequested = false; // Reset the flag
-        calibrate();                  // Do the actual calibration
+        calibrationRequested = false;
+        calibrate();
         return true;
     }
     return false;
@@ -73,12 +74,12 @@ bool Scale::checkCalibrationRequest()
 
 void Scale::calibrate()
 {
-    // Safe to call from anywhere - encapsulates all UI and scale operations
-    scale.set_scale(); // Set the scale to the default calibration factor
-    scale.tare();      // Reset the scale to 0
+    // reset current values
+    scale.set_scale();
+    scale.set_offset(0);
+    scale.tare();
     preferences.setHasCoffeeBag(false);
 
-    // Clear the screen and show initial instructions
     tft.fillScreen(TFT_BLACK);
 
     TextConfig instructionConfig = ui.createTextConfig(MAIN_FONT);
@@ -96,7 +97,6 @@ void Scale::calibrate()
     instructionConfig.y = 80;
     auto buttonBounds = ui.typeText("2. Press any button", instructionConfig);
 
-    // Wait for button press
     while (digitalRead(PIN_TOPLEFT) == HIGH &&
            digitalRead(PIN_TOPMIDDLE) == HIGH &&
            digitalRead(PIN_TOPRIGHT) == HIGH &&
@@ -105,7 +105,6 @@ void Scale::calibrate()
         delay(100);
     }
 
-    // Debounce
     delay(200);
 
     tft.fillScreen(TFT_BLACK);
@@ -113,12 +112,10 @@ void Scale::calibrate()
     instructionConfig.y = 80;
     auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
 
-    // Take multiple readings for better accuracy
     long reading = scale.get_units(10);
 
     ui.wipeText(measuringBounds);
 
-    // Show the reading and prompt for weight input
     char buf[32];
     snprintf(buf, sizeof(buf), "Reading: %ld", reading);
     instructionConfig.y = 80;
@@ -129,7 +126,6 @@ void Scale::calibrate()
     instructionConfig.y = 160;
     ui.typeText("via Serial Monitor", instructionConfig);
 
-    // Wait for serial input
     while (Serial.available() == 0)
     {
         delay(100);
@@ -137,7 +133,6 @@ void Scale::calibrate()
 
     float knownWeight = Serial.parseFloat();
 
-    // Avoid division by zero
     if (knownWeight == 0)
     {
         knownWeight = 1.0;
@@ -147,11 +142,9 @@ void Scale::calibrate()
     calibrationFactor = reading / knownWeight;
     zeroOffset = scale.get_offset();
 
-    // Save calibration factor to preferences
     preferences.setScaleCalibrationFactor(calibrationFactor);
     preferences.setScaleZeroOffset(zeroOffset);
 
-    // Show completion message
     tft.fillScreen(TFT_BLACK);
     instructionConfig.y = 40;
     bounds = ui.typeText("Calibrated", titleText);
@@ -170,6 +163,11 @@ void Scale::calibrate()
 void Scale::loadBag()
 {
     tft.fillScreen(BACKGROUND_COLOR);
+    auto bounds = ui.typeText("Loading bags...");
+
+    auto products = terminalApi.getProducts();
+
+    ui.wipeText(bounds);
 
     TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
     instructionConfig.y = tft.height() / 2 - 20;
@@ -183,7 +181,6 @@ void Scale::loadBag()
     ui.typeText("and press any button", instructionConfig);
     instructionConfig.font = &GeistMono_VariableFont_wght12pt7b;
 
-    // Wait for button press
     while (digitalRead(PIN_TOPLEFT) == HIGH &&
            digitalRead(PIN_TOPMIDDLE) == HIGH &&
            digitalRead(PIN_TOPRIGHT) == HIGH &&
@@ -194,9 +191,8 @@ void Scale::loadBag()
 
     tft.fillScreen(BACKGROUND_COLOR);
     instructionConfig.y = tft.height() / 2;
-    auto bounds = ui.typeText("Measuring...", instructionConfig);
+    bounds = ui.typeText("Measuring...", instructionConfig);
 
-    // get reading
     float reading = scale.get_units(20);
     weightBeforeLoadBag = reading;
 
@@ -213,7 +209,6 @@ void Scale::loadBag()
     ui.menu->clearButtons();
     ui.menu->selectMenu(LOADING_BAG_CONFIRM);
 
-    // Wait for button press
     while (true)
     {
         if (ui.menu->checkButtonEvents())
@@ -233,7 +228,9 @@ void Scale::confirmLoadBag()
     ui.wipeText(bounds);
 
     preferences.setHasCoffeeBag(true);
+    preferences.setCoffeeBagName("flow");
     hasBag = true;
+    bagName = "flow";
 
     ui.menu->clearButtons();
     ui.menu->selectMenu(MAIN_MENU);
@@ -254,7 +251,7 @@ float Scale::readWeight(int samples)
 
         return reading;
     }
-    return -1; // Error value
+    return -1;
 }
 
 void Scale::tare()
@@ -281,13 +278,20 @@ void Scale::backgroundWeighingTask(void *parameter)
 {
     Scale *scale = static_cast<Scale *>(parameter);
 
+    float minReading = 0.0f;
+    float maxReading = 0.0f;
+    float lastReading = 0.0f;
+
     while (true)
     {
-        // Read weight and update the display
         float reading = scale->readWeight();
         reading = round(reading * 10.0) / 10.0;
 
-        Serial.printf("hasBag=%d, reading=%.1f\n", scale->hasBag, reading);
+        minReading = min(minReading, reading);
+        maxReading = max(maxReading, reading);
+        lastReading = reading;
+
+        Serial.printf("hasBag=%d, reading=%.1f min=%.1f max=%.1f\n", scale->hasBag, reading, minReading, maxReading);
 
         if (scale->hasBag && reading < 0)
         {

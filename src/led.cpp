@@ -87,19 +87,18 @@ void LedStrip::createAnimationTask(AnimationData *data)
         animationTaskHandle = NULL;
     }
 
-    // Create the animation task
     BaseType_t result = xTaskCreate(
-        animationTask,       // Function that implements the task
-        "AnimationTask",     // Text name for the task
-        4096,                // Stack size in words
-        (void *)data,        // Parameter passed into the task
-        16,                  // Priority of the task (1 is low)
-        &animationTaskHandle // Task handle
+        animationTask,       
+        "AnimationTask",     
+        4096,             
+        (void *)data,       
+        16,                 
+        &animationTaskHandle 
     );
     if (result != pdPASS)
     {
         Serial.println("Error: Failed to create animation task");
-        delete data; // Clean up if task creation fails
+        delete data;
     }
 }
 

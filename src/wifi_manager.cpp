@@ -2,19 +2,29 @@
 
 WiFiManager::WiFiManager()
 {
+    // Initialize pointers to prevent null pointer issues
+    ssid = NULL;
+    password = NULL;
 }
 
 void WiFiManager::begin(const char *ssid, const char *password)
 {
     this->ssid = ssid;
     this->password = password;
-    
+
     // Don't auto-connect yet, we'll handle the connection in connect()
     WiFi.persistent(true);
 }
 
 void WiFiManager::connect()
 {
+    // Safety check for null credentials
+    if (!ssid || !password)
+    {
+        Serial.println("Error: WiFi credentials not set. Call begin() first.");
+        return;
+    }
+
     if (WiFi.status() == WL_CONNECTED)
     {
         Serial.println("Already connected to WiFi");
@@ -22,21 +32,21 @@ void WiFiManager::connect()
     }
 
     // Complete reset of WiFi
-    WiFi.disconnect(true, true);  // Disconnect and clear configs
-    WiFi.mode(WIFI_OFF);          // Turn WiFi off
-    delay(500);                   // Give it time to reset
-    
+    WiFi.disconnect(true, true); // Disconnect and clear configs
+    WiFi.mode(WIFI_OFF);         // Turn WiFi off
+    delay(500);                  // Give it time to reset
+
     // Now initialize WiFi properly
-    WiFi.mode(WIFI_STA);          // Set to station mode
-    
+    WiFi.mode(WIFI_STA); // Set to station mode
+
     // Turn off power-saving mode for faster connections
     // esp_wifi_set_ps(WIFI_PS_NONE);
-    
+
     Serial.print("Connecting to WiFi");
-    
+
     // Begin connection with fresh start
     WiFi.begin(ssid, password);
-    
+
     int attempts = 0;
     unsigned long startTime = millis();
     while (WiFi.status() != WL_CONNECTED && (millis() - startTime < 20000))
@@ -44,9 +54,10 @@ void WiFiManager::connect()
         Serial.print(".");
         delay(500);
         attempts++;
-        
+
         // If we've tried for a few seconds and still not connected, try a full reconnect
-        if (attempts == 10) {
+        if (attempts == 10)
+        {
             Serial.println("\nRetrying connection with full reset...");
             WiFi.disconnect(true, true);
             delay(1000);
@@ -55,12 +66,15 @@ void WiFiManager::connect()
             WiFi.begin(ssid, password);
         }
     }
-    
-    if (WiFi.status() == WL_CONNECTED) {
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
         Serial.println("\nConnected to WiFi");
         Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
         WiFi.setAutoReconnect(true); // Enable auto reconnect now that we're connected
-    } else {
+    }
+    else
+    {
         Serial.println("\nFailed to connect to WiFi");
     }
 }

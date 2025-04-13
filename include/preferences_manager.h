@@ -23,6 +23,9 @@ public:
 
     bool hasCoffeeBag();
     void setHasCoffeeBag(bool hasCoffeeBag);
+
+    String getCoffeeBagName();
+    void setCoffeeBagName(const String &name);
 };
 
 #endif

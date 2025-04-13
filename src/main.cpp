@@ -31,7 +31,7 @@ WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
 UI ui = UI(tft, &ledStrip);
 PreferencesManager preferences = PreferencesManager();
-Scale scaleManager(scale, tft, ui, preferences, PIN_DT, PIN_SCK);
+Scale scaleManager(scale, tft, ui, preferences, terminalApi, PIN_DT, PIN_SCK);
 
 void listFiles(const char *dirname);
 
@@ -61,6 +61,21 @@ void setup()
   // Initialize the scale manager
   scaleManager.begin();
 
+  auto bounds = ui.typeText("Connecting...", titleText);
+  ui.startBlinking();
+  wifi.begin(WIFI_SSID, WIFI_PASSWORD);
+  wifi.connect();
+  ui.wipeText(bounds);
+  ui.stopBlinking();
+  if (wifi.isConnected())
+  {
+    Serial.println("WiFi connected");
+  }
+  else
+  {
+    Serial.println("Failed to connect to WiFi");
+  }
+
   if (!scaleManager.isCalibrated())
   {
     Serial.println("Scale not calibrated. Starting calibration mode...");
@@ -77,134 +92,113 @@ void setup()
   }
 }
 
-// Helper function to list files recursively
-void listFiles(const char *dirname)
-{
-  Serial.printf("Listing directory: %s\n", dirname);
-
-  fs::File root = LittleFS.open(dirname);
-  if (!root)
-  {
-    Serial.println("Failed to open directory");
-    return;
-  }
-  if (!root.isDirectory())
-  {
-    Serial.println("Not a directory");
-    return;
-  }
-
-  fs::File file = root.openNextFile();
-  while (file)
-  {
-    if (file.isDirectory())
-    {
-      Serial.print("  DIR : ");
-      Serial.println(file.name());
-      // Recursive call to list subdirectory
-      listFiles(file.name());
-    }
-    else
-    {
-      Serial.print("  FILE: ");
-      Serial.print(file.name());
-      Serial.print("  SIZE: ");
-      Serial.println(file.size());
-    }
-    file = root.openNextFile();
-  }
-}
-
 void loop()
 {
-  // Check for calibration requests first
+#ifdef WEIGHING_UI_DEBUG
+  for (float f = 0; f < TERMINAL_COFFEE_WEIGHT; f += 1.0f)
+  {
+    ui.drawWeight(f);
+    delay(100);
+  }
+#endif
+
+#ifdef SERIAL_LISTEN
+  if (Serial.available())
+  {
+    String input = Serial.readStringUntil('\n');
+    if (input.startsWith("bag_name="))
+    {
+      String bagName = input.substring(9);
+      preferences.setCoffeeBagName(bagName);
+      scaleManager.bagName = bagName;
+
+      Serial.printf("Updated bag name to: %s\n", bagName.c_str());
+    }
+  }
+#endif
+
   if (scaleManager.checkCalibrationRequest())
   {
-    // If calibration was performed, we don't need to do anything else in this loop iteration
     return;
   }
 
-  // Process any pending button events - this is safer than handling in interrupts
   ui.menu->checkButtonEvents();
 
   ui.loop();
 }
 
-void order()
-{
-  Serial.println("Fetching products...");
-  std::vector<Product> products = terminalApi.getProducts();
-  Serial.printf("Found %d products\n", products.size());
+// void order()
+// {
+//   Serial.println("Fetching products...");
+//   std::vector<Product> products = terminalApi.getProducts();
+//   Serial.printf("Found %d products\n", products.size());
 
-  // Simple example with just text and position
-  auto bounds = ui.typeText("Product: ");
-  delay(1000);
-  ui.wipeText(bounds);
+//   auto bounds = ui.typeText("Product: ");
+//   delay(1000);
+//   ui.wipeText(bounds);
 
-  ui.typeText(products[0].name.c_str(), accentText);
-  delay(5000);
-  ui.wipeText(bounds);
+//   ui.typeText(products[0].name.c_str(), accentText);
+//   delay(5000);
+//   ui.wipeText(bounds);
 
-  // clear cart - simplified call
-  bounds = ui.typeText("Clearing cart...", titleText);
-  if (terminalApi.clearCart())
-  {
-    Serial.println("Cart cleared");
-  }
-  else
-  {
-    Serial.println("Failed to clear cart");
-  }
-  ui.wipeText(bounds);
+//   bounds = ui.typeText("Clearing cart...", titleText);
+//   if (terminalApi.clearCart())
+//   {
+//     Serial.println("Cart cleared");
+//   }
+//   else
+//   {
+//     Serial.println("Failed to clear cart");
+//   }
+//   ui.wipeText(bounds);
 
-  bounds = ui.typeText("Adding to cart...");
-  Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
-  if (cart)
-  {
-    Serial.println("Item added to cart");
-    Serial.printf("Subtotal: %d\n", cart->subtotal);
-    Serial.printf("Address ID: %s\n", cart->addressID.c_str());
-    Serial.printf("Card ID: %s\n", cart->cardID.c_str());
+//   bounds = ui.typeText("Adding to cart...");
+//   Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
+//   if (cart)
+//   {
+//     Serial.println("Item added to cart");
+//     Serial.printf("Subtotal: %d\n", cart->subtotal);
+//     Serial.printf("Address ID: %s\n", cart->addressID.c_str());
+//     Serial.printf("Card ID: %s\n", cart->cardID.c_str());
 
-    ui.wipeText(bounds);
+//     ui.wipeText(bounds);
 
-    bounds = ui.typeText("Cart subtotal: ");
+//     bounds = ui.typeText("Cart subtotal: ");
 
-    TextConfig subtotalConfig = ui.createTextConfig(MAIN_FONT);
-    subtotalConfig.y = bounds.y + bounds.height + 8;
-    subtotalConfig.enableCursor = false;
-    auto bounds2 = ui.typeText(String(cart->subtotal).c_str(), subtotalConfig);
-    ui.wipeText(bounds2);
-    ui.wipeText(bounds);
+//     TextConfig subtotalConfig = ui.createTextConfig(MAIN_FONT);
+//     subtotalConfig.y = bounds.y + bounds.height + 8;
+//     subtotalConfig.enableCursor = false;
+//     auto bounds2 = ui.typeText(String(cart->subtotal).c_str(), subtotalConfig);
+//     ui.wipeText(bounds2);
+//     ui.wipeText(bounds);
 
-    delay(5000);
-  }
-  else
-  {
-    Serial.println("Failed to add item to cart");
-  }
-  ui.wipeText(bounds);
+//     delay(5000);
+//   }
+//   else
+//   {
+//     Serial.println("Failed to add item to cart");
+//   }
+//   ui.wipeText(bounds);
 
-  // place order
-  bounds = ui.typeText("Placing order...");
-  Order *order = terminalApi.convertCartToOrder();
-  if (order)
-  {
-    Serial.println("Order placed");
-    Serial.printf("Order ID: %s\n", order->id.c_str());
-    Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
-    Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
-    Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
+//   bounds = ui.typeText("Placing order...");
+//   Order *order = terminalApi.convertCartToOrder();
+//   if (order)
+//   {
+//     Serial.println("Order placed");
+//     Serial.printf("Order ID: %s\n", order->id.c_str());
+//     Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
+//     Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
+//     Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
 
-    ui.wipeText(bounds);
+//     ui.wipeText(bounds);
 
-    ui.typeText("Order placed", accentText);
+//     ui.typeText("Order placed", accentText);
 
-    delay(5000);
-  }
-  else
-  {
-    Serial.println("Failed to place order");
-  }
-  ui.wipeText(bounds);
-}
+//     delay(5000);
+//   }
+//   else
+//   {
+//     Serial.println("Failed to place order");
+//   }
+//   ui.wipeText(bounds);
+// }

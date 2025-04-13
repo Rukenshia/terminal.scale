@@ -20,6 +20,7 @@ class Scale;
 #define PRIMARY_COLOR TFT_WHITE
 #define BACKGROUND_COLOR TFT_BLACK
 #define TEXT_COLOR 0xBDD8
+#define BAG_COLOR 0x736C
 
 #define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
 
@@ -129,7 +130,7 @@ private:
     TextBounds lastCursorState;
     Scale *scaleManager;
 
-    int lastProgressBarWidth = 0;
+    int lastProgressBarFill = 0;
     float lastDrawnReading = 0.0f;
 
     bool drawnBagNotFound = false;

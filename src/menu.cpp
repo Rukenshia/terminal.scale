@@ -53,8 +53,8 @@ void IRAM_ATTR Menu::handleButtonPress(void *arg)
 }
 
 // Constructor
-Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance)
-    : tft(tftDisplay), ui(uiInstance), imageLoader(tftDisplay)
+Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoader)
+    : tft(tftDisplay), ui(uiInstance), imageLoader(imageLoader)
 {
 
     // Initialize menu type
@@ -119,6 +119,9 @@ void Menu::handlePress(int buttonPin)
     case MAIN_MENU:
         handlePressMainMenu(buttonPin);
         break;
+    case SELECT_BAG:
+        handlePressSelectBag(buttonPin);
+        break;
     case LOADING_BAG_CONFIRM:
         handlePressLoadingBagConfirm(buttonPin);
         break;
@@ -132,6 +135,9 @@ void Menu::handlePress(int buttonPin)
 
 void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 {
+    // make sure to clear any UI cursor
+    ui.stopBlinking();
+
     // Set the current menu type
     current = menuType;
 
@@ -147,6 +153,17 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].visible = true;
         menuItems[2].imagePath = "/dot.png";
         menuItems[2].text = "Calibrate";
+        break;
+    case SELECT_BAG:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/left.png";
+        menuItems[0].text = "";
+
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/right.png";
+        menuItems[2].text = "";
         break;
     case LOADING_BAG_CONFIRM:
         menuItems[0].visible = true;
@@ -183,6 +200,22 @@ void Menu::handlePressMainMenu(int buttonPin)
         // Request calibration instead of directly calling calibrate()
         // This is safe to call from an interrupt context
         scaleManager.requestCalibration();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressSelectBag(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        // Handle left button press
+        break;
+    case PIN_TOPRIGHT:
+        // Handle right button press
         break;
     default:
         Serial.println("Unknown Button Pressed");

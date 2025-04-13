@@ -7,6 +7,7 @@
 
 class UI;
 #include "preferences_manager.h"
+#include "terminal_api.h"
 
 #define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 16.0f
 #define TERMINAL_COFFEE_WEIGHT 340.0f // 12oz
@@ -19,6 +20,7 @@ private:
     TFT_eSPI &tft;
     UI &ui;
     PreferencesManager &preferences;
+    TerminalApi &terminalApi;
 
     // Pin configuration
     const int PIN_DT;
@@ -37,14 +39,14 @@ private:
     TaskHandle_t backgroundWeighingTaskHandle = NULL;
 
 public:
-    Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, int dt_pin, int sck_pin);
+    Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin);
 
     bool hasBag = false;
+    String bagName = "Unknown";
     float lastReading = 0.0f;
 
     bool bagRemovedFromSurface = false;
     unsigned long bagRemovedTime = 0;
-    
 
     // Initialize the scale
     void begin();

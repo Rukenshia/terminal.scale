@@ -68,3 +68,18 @@ void PreferencesManager::setHasCoffeeBag(bool hasCoffeeBag)
     preferences.putBool("bag", hasCoffeeBag);
     end();
 }
+
+String PreferencesManager::getCoffeeBagName()
+{
+    begin(true);
+    String bagName = preferences.getString("bag_name", "");
+    end();
+    return bagName;
+}
+
+void PreferencesManager::setCoffeeBagName(const String &name)
+{
+    begin();
+    preferences.putString("bag_name", name);
+    end();
+}
