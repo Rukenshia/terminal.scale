@@ -88,12 +88,14 @@ extern "C" void
 cursorBlinkTaskWrapper(void *parameter);
 
 class Menu;
+class BagSelect;
 
 class UI
 {
 public:
     UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip);
     Menu *menu;
+    BagSelect *bagSelect;
 
     // Initialize the UI
     void begin(Scale *scaleManager);

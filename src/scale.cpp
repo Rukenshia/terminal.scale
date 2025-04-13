@@ -1,6 +1,7 @@
 #include "scale.h"
 #include "buttons.h"
 #include "ui.h"
+#include "bag_select.h"
 
 Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin)
     : scale(scaleModule),
@@ -160,15 +161,37 @@ void Scale::calibrate()
     esp_restart();
 }
 
-void Scale::loadBag()
+void Scale::startLoadBag()
 {
+    loadingBag = true;
+
     tft.fillScreen(BACKGROUND_COLOR);
-    auto bounds = ui.typeText("Loading bags...");
+    auto bounds = ui.typeText("Loading...");
+    ui.startBlinking();
 
     auto products = terminalApi.getProducts();
+    std::vector<String> bagList;
+    bagList.reserve(products.size());
 
+    std::transform(
+        products.begin(),
+        products.end(),
+        std::back_inserter(bagList),
+        [](const Product &product)
+        { return product.name; });
+    bagList.push_back("[object Object]");
+    bagList.push_back("segmentation fault");
+    ui.bagSelect->setBags(bagList);
+
+    ui.stopBlinking();
     ui.wipeText(bounds);
 
+    ui.menu->selectMenu(SELECT_BAG);
+    ui.bagSelect->taint();
+}
+
+void Scale::loadBag()
+{
     TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
     instructionConfig.y = tft.height() / 2 - 20;
     instructionConfig.enableCursor = false;
@@ -191,7 +214,7 @@ void Scale::loadBag()
 
     tft.fillScreen(BACKGROUND_COLOR);
     instructionConfig.y = tft.height() / 2;
-    bounds = ui.typeText("Measuring...", instructionConfig);
+    auto bounds = ui.typeText("Measuring...", instructionConfig);
 
     float reading = scale.get_units(20);
     weightBeforeLoadBag = reading;
@@ -230,6 +253,7 @@ void Scale::confirmLoadBag()
     preferences.setHasCoffeeBag(true);
     preferences.setCoffeeBagName("flow");
     hasBag = true;
+    loadingBag = false;
     bagName = "flow";
 
     ui.menu->clearButtons();

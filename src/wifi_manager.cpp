@@ -11,9 +11,27 @@ void WiFiManager::begin(const char *ssid, const char *password)
 {
     this->ssid = ssid;
     this->password = password;
+}
 
-    // Don't auto-connect yet, we'll handle the connection in connect()
-    WiFi.persistent(true);
+void WiFiManager::reconnect()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        WiFi.reconnect();
+
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            Serial.println("Reconnected to WiFi");
+        }
+        else
+        {
+            Serial.println("Failed to reconnect to WiFi");
+        }
+    }
+    else
+    {
+        Serial.println("Already connected to WiFi");
+    }
 }
 
 void WiFiManager::connect()
@@ -39,9 +57,6 @@ void WiFiManager::connect()
     // Now initialize WiFi properly
     WiFi.mode(WIFI_STA); // Set to station mode
 
-    // Turn off power-saving mode for faster connections
-    // esp_wifi_set_ps(WIFI_PS_NONE);
-
     Serial.print("Connecting to WiFi");
 
     // Begin connection with fresh start
@@ -52,6 +67,7 @@ void WiFiManager::connect()
     while (WiFi.status() != WL_CONNECTED && (millis() - startTime < 20000))
     {
         Serial.print(".");
+
         delay(500);
         attempts++;
 

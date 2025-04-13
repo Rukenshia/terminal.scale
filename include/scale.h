@@ -42,6 +42,7 @@ public:
     Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin);
 
     bool hasBag = false;
+    bool loadingBag = false;
     String bagName = "Unknown";
     float lastReading = 0.0f;
 
@@ -75,6 +76,7 @@ public:
     // Get zero offset
     long getZeroOffset();
 
+    void startLoadBag();
     void loadBag();
     void confirmLoadBag();
 

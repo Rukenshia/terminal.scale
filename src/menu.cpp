@@ -1,6 +1,7 @@
 #include "menu.h"
 #include "buttons.h"
 #include "scale.h"
+#include "bag_select.h"
 
 // Static instance pointer for interrupt handlers
 static Menu *instance = nullptr;
@@ -159,7 +160,9 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[0].imagePath = "/left.png";
         menuItems[0].text = "";
 
-        menuItems[1].visible = false;
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Select";
 
         menuItems[2].visible = true;
         menuItems[2].imagePath = "/right.png";
@@ -194,7 +197,7 @@ void Menu::handlePressMainMenu(int buttonPin)
     switch (buttonPin)
     {
     case PIN_TOPLEFT:
-        scaleManager.loadBag();
+        scaleManager.startLoadBag();
         break;
     case PIN_TOPRIGHT:
         // Request calibration instead of directly calling calibrate()
@@ -212,10 +215,13 @@ void Menu::handlePressSelectBag(int buttonPin)
     switch (buttonPin)
     {
     case PIN_TOPLEFT:
-        // Handle left button press
+        ui.bagSelect->selectPreviousBag();
+        break;
+    case PIN_TOPMIDDLE:
+        ui.bagSelect->confirmBagSelection();
         break;
     case PIN_TOPRIGHT:
-        // Handle right button press
+        ui.bagSelect->selectNextBag();
         break;
     default:
         Serial.println("Unknown Button Pressed");
@@ -246,6 +252,8 @@ void Menu::draw()
     {
         return;
     }
+
+    Serial.printf("drawing menu %d\n", current);
 
     tainted = false;
 

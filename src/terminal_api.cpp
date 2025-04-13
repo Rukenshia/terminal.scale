@@ -19,12 +19,7 @@ std::vector<Product> TerminalApi::getProducts()
 {
     std::vector<Product> products;
 
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return products;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/product";

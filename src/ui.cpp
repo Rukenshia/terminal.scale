@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "scale.h"
+#include "bag_select.h"
 
 void cursorBlinkTaskWrapper(void *parameter)
 {
@@ -57,6 +58,7 @@ UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip)
       blinkState(NULL)
 {
     this->menu = new Menu(tftDisplay, *this, imageLoader);
+    this->bagSelect = new BagSelect(tftDisplay, *this);
     memset(&lastCursorState, 0, sizeof(TextBounds));
 }
 
@@ -296,6 +298,12 @@ void UI::drawMenu()
 void UI::loop()
 {
     drawMenu();
+
+    if (scaleManager->loadingBag)
+    {
+        bagSelect->draw();
+        return;
+    }
 
     if (scaleManager->bagRemovedFromSurface)
     {

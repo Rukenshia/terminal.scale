@@ -14,6 +14,7 @@ public:
     WiFiManager();
     void begin(const char *ssid, const char *password);
     void connect();
+    void reconnect();
     void disconnect();
     bool isConnected();
 
