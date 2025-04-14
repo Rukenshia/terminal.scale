@@ -67,6 +67,7 @@ void UI::begin(Scale *scaleManager)
 {
     this->scaleManager = scaleManager;
     menu->begin();
+    bagSelect->begin(scaleManager);
 
     if (!imageLoader.begin())
     {

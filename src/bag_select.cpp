@@ -60,13 +60,13 @@ void BagSelect::draw()
 
 void BagSelect::confirmBagSelection()
 {
-    ui.menu->selectMenu(MAIN_MENU);
-    ui.menu->taint();
-    ui.menu->draw();
+    scaleManager->loadBag(bags[selectedBagIndex]);
 }
 
 void BagSelect::cancelBagSelection()
 {
+    tft.fillScreen(BACKGROUND_COLOR);
+
     ui.menu->selectMenu(MAIN_MENU);
     ui.menu->taint();
     ui.menu->draw();

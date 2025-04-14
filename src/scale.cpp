@@ -75,11 +75,11 @@ bool Scale::checkCalibrationRequest()
 
 void Scale::calibrate()
 {
-    // reset current values
-    scale.set_scale();
-    scale.set_offset(0);
-    scale.tare();
-    preferences.setHasCoffeeBag(false);
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskDelete(backgroundWeighingTaskHandle);
+        backgroundWeighingTaskHandle = NULL;
+    }
 
     tft.fillScreen(TFT_BLACK);
 
@@ -91,6 +91,13 @@ void Scale::calibrate()
 
     auto bounds = ui.typeText("Calibration", titleText);
     delay(1000);
+
+    // reset current values
+    scale.set_scale();
+    scale.set_offset(0);
+    scale.tare();
+    preferences.setHasCoffeeBag(false);
+
     ui.wipeText(bounds);
 
     ui.typeText("1. Place a known weight", instructionConfig);
@@ -113,7 +120,10 @@ void Scale::calibrate()
     instructionConfig.y = 80;
     auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
 
+    delay(2000);
+
     long reading = scale.get_units(10);
+    long offset = scale.get_offset();
 
     ui.wipeText(measuringBounds);
 
@@ -123,7 +133,7 @@ void Scale::calibrate()
     auto readingBounds = ui.typeText(buf, instructionConfig);
 
     instructionConfig.y = 120;
-    ui.typeText("Enter weight in grams", instructionConfig);
+    ui.typeText("Enter weight in milligrams", instructionConfig);
     instructionConfig.y = 160;
     ui.typeText("via Serial Monitor", instructionConfig);
 
@@ -132,16 +142,13 @@ void Scale::calibrate()
         delay(100);
     }
 
-    float knownWeight = Serial.parseFloat();
+    String input = Serial.readStringUntil('\n');
+    Serial.printf("received: '%s'\n", input.c_str());
+    long knownWeightMg = input.toInt();
+    Serial.printf("Known weight: %ld\n", knownWeightMg);
 
-    if (knownWeight == 0)
-    {
-        knownWeight = 1.0;
-        Serial.println("Warning: Zero weight entered, using 1g as default");
-    }
-
-    calibrationFactor = reading / knownWeight;
-    zeroOffset = scale.get_offset();
+    calibrationFactor = reading * 1000.0f / knownWeightMg;
+    zeroOffset = offset;
 
     preferences.setScaleCalibrationFactor(calibrationFactor);
     preferences.setScaleZeroOffset(zeroOffset);
@@ -190,8 +197,14 @@ void Scale::startLoadBag()
     ui.bagSelect->taint();
 }
 
-void Scale::loadBag()
+void Scale::loadBag(String name)
 {
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskDelete(backgroundWeighingTaskHandle);
+        backgroundWeighingTaskHandle = NULL;
+    }
+
     TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
     instructionConfig.y = tft.height() / 2 - 20;
     instructionConfig.enableCursor = false;
@@ -216,7 +229,7 @@ void Scale::loadBag()
     instructionConfig.y = tft.height() / 2;
     auto bounds = ui.typeText("Measuring...", instructionConfig);
 
-    float reading = scale.get_units(20);
+    float reading = scale.get_units(10);
     weightBeforeLoadBag = reading;
 
     ui.wipeText(bounds);
@@ -231,6 +244,16 @@ void Scale::loadBag()
 
     ui.menu->clearButtons();
     ui.menu->selectMenu(LOADING_BAG_CONFIRM);
+
+    bagName = name;
+
+    xTaskCreate(
+        backgroundWeighingTask,
+        "BackgroundWeighing",
+        4096,
+        this,
+        4,
+        &backgroundWeighingTaskHandle);
 
     while (true)
     {

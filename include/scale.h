@@ -77,7 +77,7 @@ public:
     long getZeroOffset();
 
     void startLoadBag();
-    void loadBag();
+    void loadBag(String name);
     void confirmLoadBag();
 
     static void backgroundWeighingTask(void *parameter);

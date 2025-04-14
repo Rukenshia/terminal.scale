@@ -76,8 +76,7 @@ void setup()
     Serial.println("Failed to connect to WiFi");
   }
 
-  // if (!scaleManager.isCalibrated())
-  if (scaleManager.isCalibrated())
+  if (!scaleManager.isCalibrated())
   {
     Serial.println("Scale not calibrated. Starting calibration mode...");
     scaleManager.calibrate();

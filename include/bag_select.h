@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ui.h"
+#include "scale.h"
 
 #define PREVIEW_COLOR 0x736C
 #define SELECTED_COLOR ACCENT_COLOR
@@ -15,6 +16,7 @@ class BagSelect
 private:
     TFT_eSPI &tft;
     UI &ui;
+    Scale *scaleManager;
 
     std::vector<String> bags;
 
@@ -23,6 +25,10 @@ private:
 
 public:
     BagSelect(TFT_eSPI &tftDisplay, UI &uiInstance);
+    void begin(Scale *scaleManagerInstance)
+    {
+        scaleManager = scaleManagerInstance;
+    };
     void setBags(const std::vector<String> &bagList) { bags = bagList; };
     void taint() { needsRedraw = true; };
     void draw();

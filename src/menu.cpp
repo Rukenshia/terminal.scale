@@ -237,7 +237,7 @@ void Menu::handlePressLoadingBagConfirm(int buttonPin)
         scaleManager.confirmLoadBag();
         break;
     case PIN_TOPRIGHT:
-        scaleManager.loadBag();
+        scaleManager.loadBag(scaleManager.bagName);
         break;
     default:
         Serial.println("Unknown Button Pressed");
