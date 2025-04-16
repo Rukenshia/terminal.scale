@@ -1,6 +1,12 @@
 #include "store.h"
 #include "debug.h"
 
+void Store::exit()
+{
+    reset();
+    ledStrip.turnOff();
+}
+
 void Store::draw()
 {
     if (!tainted)
@@ -131,6 +137,9 @@ void Store::recalcOrdersMenuButtons()
     {
         ui.menu->redraw();
     }
+
+    // Update LED Strip to show the progress (how far have we scrolled through the list of orders)
+    ledStrip.progress(orderIndex / orders.size());
 }
 
 void Store::nextOrder()

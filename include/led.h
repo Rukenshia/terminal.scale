@@ -24,7 +24,9 @@ public:
     LedStrip();
     void begin();
 
-    void progress(float percentage);
+    void turnOff();
+
+    void progress(float percentage, RgbColor color = RgbColor(255, 94, 0));
     void turnOnAnimation();
     void turnOffAnimation();
 

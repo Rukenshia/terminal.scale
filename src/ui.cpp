@@ -61,7 +61,7 @@ UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip, TerminalApi &terminalApi)
 {
     this->menu = new Menu(tftDisplay, *this, imageLoader);
     this->bagSelect = new BagSelect(tftDisplay, *this);
-    this->store = new Store(*this, tftDisplay, *scaleManager, terminalApi);
+    this->store = new Store(*this, tftDisplay, *scaleManager, terminalApi, ledStrip);
     memset(&lastCursorState, 0, sizeof(TextBounds));
 }
 

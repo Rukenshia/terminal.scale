@@ -13,6 +13,7 @@ private:
     TFT_eSPI &tft;
     Scale &scaleManager;
     TerminalApi &terminalApi;
+    LedStrip &ledStrip;
 
     bool tainted = false;
 
@@ -25,9 +26,10 @@ private:
     void recalcOrdersMenuButtons();
 
 public:
-    Store(UI &uiInstance, TFT_eSPI &tftDisplay, Scale &scaleInstance, TerminalApi &terminalApi)
-        : ui(uiInstance), tft(tftDisplay), scaleManager(scaleInstance), terminalApi(terminalApi) {}
+    Store(UI &uiInstance, TFT_eSPI &tftDisplay, Scale &scaleInstance, TerminalApi &terminalApi, LedStrip &ledStrip)
+        : ui(uiInstance), tft(tftDisplay), scaleManager(scaleInstance), terminalApi(terminalApi), ledStrip(ledStrip) {}
 
+    void exit();
     void taint() { tainted = true; };
     void draw();
 

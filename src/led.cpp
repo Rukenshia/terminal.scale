@@ -7,6 +7,11 @@ LedStrip::LedStrip() : strip(NUM_LEDS, LED_DATA_PIN)
 void LedStrip::begin()
 {
     strip.Begin();
+    turnOff();
+}
+
+void LedStrip::turnOff()
+{
     for (int i = 0; i < NUM_LEDS; i++)
     {
         strip.SetPixelColor(i, RgbColor(0, 0, 0));
@@ -88,13 +93,12 @@ void LedStrip::createAnimationTask(AnimationData *data)
     }
 
     BaseType_t result = xTaskCreate(
-        animationTask,       
-        "AnimationTask",     
-        4096,             
-        (void *)data,       
-        16,                 
-        &animationTaskHandle 
-    );
+        animationTask,
+        "AnimationTask",
+        4096,
+        (void *)data,
+        16,
+        &animationTaskHandle);
     if (result != pdPASS)
     {
         Serial.println("Error: Failed to create animation task");
@@ -102,7 +106,7 @@ void LedStrip::createAnimationTask(AnimationData *data)
     }
 }
 
-void LedStrip::progress(float percentage) // percentage: 0.0 to 1.0
+void LedStrip::progress(float percentage, RgbColor color) // percentage: 0.0 to 1.0
 {
     static const uint8_t maxBrightness = 128;
     Serial.printf("Progress: %.2f\n", percentage);
@@ -110,8 +114,6 @@ void LedStrip::progress(float percentage) // percentage: 0.0 to 1.0
 
     int ledCount = (int)(NUM_LEDS * percentage);
     int lastLedBrightness = (int)(maxBrightness * (percentage - (float)ledCount / NUM_LEDS) * NUM_LEDS);
-
-    auto color = RgbColor(255, 94, 0); // Orange
 
     for (int i = 0; i < NUM_LEDS; i++)
     {

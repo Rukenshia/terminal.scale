@@ -18,6 +18,7 @@ enum MenuType
     LOADING_BAG_CONFIRM,
     STORE,
     STORE_ORDERS,
+    STORE_BROWSE, // these choosing menus should really be the same thing
 };
 
 enum MenuButton
@@ -54,6 +55,7 @@ private:
     void handlePressSelectBag(int buttonPin);
     void handlePressStore(int buttonPin);
     void handlePressStoreOrders(int buttonPin);
+    void handlePressStoreBrowse(int buttonPin);
 
 public:
     Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance);
