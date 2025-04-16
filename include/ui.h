@@ -7,6 +7,7 @@
 #include "image_loader.h"
 #include "menu.h"
 #include "led.h"
+#include "terminal_api.h"
 
 class Scale;
 
@@ -72,6 +73,7 @@ struct TextConfig
 static const TextConfig defaultText = TextConfig(&GeistMono_VariableFont_wght14pt7b, 100, -1, -1, TEXT_COLOR, ACCENT_COLOR, 20, true);
 static const TextConfig accentText = TextConfig(&GeistMono_VariableFont_wght14pt7b, 100, -1, -1, ACCENT_COLOR, ACCENT_COLOR, 20, true);
 static const TextConfig titleText = TextConfig(&GeistMono_VariableFont_wght18pt7b, 100, -1, -1, TFT_WHITE, ACCENT_COLOR, 20, true);
+static const TextConfig smallTitleText = TextConfig(&GeistMono_VariableFont_wght16pt7b, 100, -1, -1, TFT_WHITE, ACCENT_COLOR, 20, true);
 
 // Structure to store blinking cursor state
 struct BlinkState
@@ -89,13 +91,16 @@ cursorBlinkTaskWrapper(void *parameter);
 
 class Menu;
 class BagSelect;
+class Store;
 
 class UI
 {
 public:
-    UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip);
+    UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip, TerminalApi &terminalApi);
+
     Menu *menu;
     BagSelect *bagSelect;
+    Store *store;
 
     // Initialize the UI
     void begin(Scale *scaleManager);
@@ -125,6 +130,7 @@ public:
 
 private:
     TFT_eSPI &tft;
+    TerminalApi &terminalApi;
     LedStrip *ledStrip;
     ImageLoader imageLoader;
     TaskHandle_t cursorBlinkTaskHandle;

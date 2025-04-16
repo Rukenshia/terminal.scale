@@ -11,6 +11,7 @@
 #include "preferences_manager.h"
 #include "buttons.h"
 #include "scale.h"
+#include "store.h"
 #include "debug.h"
 
 #define PIN_DT 27
@@ -29,7 +30,7 @@ TFT_eSPI tft = TFT_eSPI();
 LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
-UI ui = UI(tft, &ledStrip);
+UI ui = UI(tft, &ledStrip, terminalApi);
 PreferencesManager preferences = PreferencesManager();
 Scale scaleManager(scale, tft, ui, preferences, terminalApi, PIN_DT, PIN_SCK);
 
@@ -63,8 +64,10 @@ void setup()
 
   auto bounds = ui.typeText("Connecting...", titleText);
   ui.startBlinking();
+#ifndef NO_WIFI
   wifi.begin(WIFI_SSID, WIFI_PASSWORD);
   wifi.connect();
+#endif
   ui.wipeText(bounds);
   ui.stopBlinking();
   if (wifi.isConnected())
@@ -87,8 +90,9 @@ void setup()
     ui.terminalAnimation();
 #endif
 
-    ui.menu->selectMenu(MAIN_MENU);
-    ui.menu->draw();
+    // ui.menu->selectMenu(MAIN_MENU);
+    ui.menu->selectMenu(STORE);
+    ui.store->taint();
   }
 }
 

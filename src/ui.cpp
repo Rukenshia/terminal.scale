@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "scale.h"
 #include "bag_select.h"
+#include "store.h"
 
 void cursorBlinkTaskWrapper(void *parameter)
 {
@@ -50,15 +51,17 @@ void cursorBlinkTaskWrapper(void *parameter)
 }
 
 // Constructor
-UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip)
+UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip, TerminalApi &terminalApi)
     : tft(tftDisplay),
       ledStrip(ledStrip),
       imageLoader(tftDisplay),
       cursorBlinkTaskHandle(NULL),
-      blinkState(NULL)
+      blinkState(NULL),
+      terminalApi(terminalApi)
 {
     this->menu = new Menu(tftDisplay, *this, imageLoader);
     this->bagSelect = new BagSelect(tftDisplay, *this);
+    this->store = new Store(*this, tftDisplay, *scaleManager, terminalApi);
     memset(&lastCursorState, 0, sizeof(TextBounds));
 }
 
@@ -299,6 +302,13 @@ void UI::drawMenu()
 void UI::loop()
 {
     drawMenu();
+
+    if (menu->current == STORE ||
+        menu->current == STORE_ORDERS)
+    {
+        store->draw();
+        return;
+    }
 
     if (scaleManager->loadingBag)
     {

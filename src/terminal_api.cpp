@@ -74,6 +74,82 @@ std::vector<Product> TerminalApi::getProducts()
     return products;
 }
 
+// GET /order
+std::vector<Order> TerminalApi::getOrders()
+{
+    std::vector<Order> orders;
+
+    // Make sure WiFi is connected
+    if (!wifiManager || !wifiManager->isConnected())
+    {
+        Serial.println("WiFi not connected or not initialized");
+        return orders;
+    }
+
+    // Prepare request URL
+    String url = String(BASE_URL) + "/order";
+    String response;
+
+    if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
+    {
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, response);
+
+        if (error)
+        {
+            Serial.print("JSON parsing failed: ");
+            Serial.println(error.c_str());
+            return orders;
+        }
+
+        JsonArray data = doc["data"].as<JsonArray>();
+
+        for (JsonVariant orderVariant : data)
+        {
+            Order order;
+            JsonObject orderObj = orderVariant.as<JsonObject>();
+
+            order.id = orderObj["id"].as<String>();
+            order.created = orderObj["created"].as<String>();
+            order.index = orderObj["index"].as<uint16_t>();
+
+            JsonObject shipping = orderObj["shipping"].as<JsonObject>();
+            order.shipping.name = shipping["name"].as<String>();
+            order.shipping.street1 = shipping["street1"].as<String>();
+            order.shipping.street2 = shipping["street2"].as<String>();
+            order.shipping.city = shipping["city"].as<String>();
+            order.shipping.province = shipping["province"].as<String>();
+            order.shipping.country = shipping["country"].as<String>();
+            order.shipping.zip = shipping["zip"].as<String>();
+            order.shipping.phone = shipping["phone"].as<String>();
+
+            JsonObject amount = orderObj["amount"].as<JsonObject>();
+            order.amount.subtotal = amount["subtotal"].as<uint32_t>();
+            order.amount.shipping = amount["shipping"].as<uint32_t>();
+
+            JsonObject tracking = orderObj["tracking"].as<JsonObject>();
+            order.tracking.service = tracking["service"].as<String>();
+            order.tracking.number = tracking["number"].as<String>();
+            order.tracking.status = tracking["status"].as<String>();
+            order.tracking.url = tracking["url"].as<String>();
+
+            JsonArray items = orderObj["items"].as<JsonArray>();
+            for (JsonVariant itemVariant : items)
+            {
+                JsonObject itemObj = itemVariant.as<JsonObject>();
+                OrderItem item;
+
+                item.id = itemObj["id"].as<String>();
+                item.description = itemObj["description"].as<String>();
+            }
+        }
+        return orders;
+    }
+
+    Serial.println("Failed to fetch orders");
+    return orders;
+}
+
 // DELETE /cart
 bool TerminalApi::clearCart()
 {

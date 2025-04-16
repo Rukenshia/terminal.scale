@@ -2,6 +2,7 @@
 #include "buttons.h"
 #include "scale.h"
 #include "bag_select.h"
+#include "store.h"
 
 // Static instance pointer for interrupt handlers
 static Menu *instance = nullptr;
@@ -115,6 +116,7 @@ bool Menu::checkButtonEvents()
 
 void Menu::handlePress(int buttonPin)
 {
+
     switch (current)
     {
     case MAIN_MENU:
@@ -125,6 +127,12 @@ void Menu::handlePress(int buttonPin)
         break;
     case LOADING_BAG_CONFIRM:
         handlePressLoadingBagConfirm(buttonPin);
+        break;
+    case STORE:
+        handlePressStore(buttonPin);
+        break;
+    case STORE_ORDERS:
+        handlePressStoreOrders(buttonPin);
         break;
     default:
         Serial.println("Unknown menu type");
@@ -138,6 +146,18 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 {
     // make sure to clear any UI cursor
     ui.stopBlinking();
+
+    if (current == menuType)
+    {
+        return;
+    }
+
+    if (
+        (current == STORE || current == STORE_ORDERS) &&
+        (menuType != STORE && menuType != STORE_ORDERS))
+    {
+        ui.store->reset();
+    }
 
     // Set the current menu type
     current = menuType;
@@ -179,6 +199,30 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].imagePath = "/down.png";
         menuItems[2].text = "Retake";
         break;
+    case STORE:
+        menuItems[0].visible = false;
+
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Home";
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot.png";
+        menuItems[2].text = "Orders";
+        break;
+    case STORE_ORDERS:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/left.png";
+        menuItems[0].text = "Previous";
+
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Back";
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/right.png";
+        menuItems[2].text = "Next";
+        break;
     default:
         Serial.println("Unknown Menu Selected");
         break;
@@ -203,6 +247,10 @@ void Menu::handlePressMainMenu(int buttonPin)
         // Request calibration instead of directly calling calibrate()
         // This is safe to call from an interrupt context
         scaleManager.requestCalibration();
+        break;
+    case PIN_TERMINAL_BUTTON:
+        selectMenu(MenuType::STORE);
+        ui.store->taint();
         break;
     default:
         Serial.println("Unknown Button Pressed");
@@ -238,6 +286,44 @@ void Menu::handlePressLoadingBagConfirm(int buttonPin)
         break;
     case PIN_TOPRIGHT:
         scaleManager.loadBag(scaleManager.bagName);
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressStore(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPMIDDLE:
+        ui.store->reset();
+        this->selectMenu(MAIN_MENU);
+        break;
+    case PIN_TOPRIGHT:
+        this->selectMenu(STORE_ORDERS);
+        ui.store->taint();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressStoreOrders(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        ui.store->previousOrder();
+        break;
+    case PIN_TOPMIDDLE:
+        this->selectMenu(STORE);
+        ui.store->taint();
+        break;
+    case PIN_TOPRIGHT:
+        ui.store->nextOrder();
         break;
     default:
         Serial.println("Unknown Button Pressed");

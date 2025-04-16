@@ -205,6 +205,8 @@ void Scale::loadBag(String name)
         backgroundWeighingTaskHandle = NULL;
     }
 
+    tft.fillScreen(BACKGROUND_COLOR);
+
     TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
     instructionConfig.y = tft.height() / 2 - 20;
     instructionConfig.enableCursor = false;

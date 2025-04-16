@@ -78,6 +78,7 @@ struct OrderTracking
 {
     String service;
     String number;
+    String status;
     String url;
 };
 
@@ -99,6 +100,7 @@ struct OrderItem
 struct Order
 {
     String id;
+    String created;
     uint32_t index;
     ShippingAddress shipping;
     OrderAmount amount;
@@ -119,6 +121,7 @@ public:
 
     std::vector<Product> getProducts();
     std::vector<ShippingAddress> getShippingAddresses();
+    std::vector<Order> getOrders();
 
     Cart *getCart();
     Cart *createCart();

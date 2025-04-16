@@ -16,6 +16,15 @@ enum MenuType
     MAIN_MENU,
     SELECT_BAG,
     LOADING_BAG_CONFIRM,
+    STORE,
+    STORE_ORDERS,
+};
+
+enum MenuButton
+{
+    LEFT,
+    MIDDLE,
+    RIGHT
 };
 
 struct MenuItem
@@ -43,6 +52,8 @@ private:
     void handlePressMainMenu(int buttonPin);
     void handlePressLoadingBagConfirm(int buttonPin);
     void handlePressSelectBag(int buttonPin);
+    void handlePressStore(int buttonPin);
+    void handlePressStoreOrders(int buttonPin);
 
 public:
     Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance);
@@ -52,7 +63,16 @@ public:
     void clearButtons();
     bool checkButtonEvents();
 
+    void showButton(MenuButton button) { menuItems[button].visible = true; };
+    void hideButton(MenuButton button) { menuItems[button].visible = false; };
+    bool isButtonVisible(MenuButton button) { return menuItems[button].visible; };
+
     void draw();
+    void redraw()
+    {
+        tainted = true;
+        draw();
+    };
     void taint() { tainted = true; }
     void selectMenu(MenuType menuType, bool shouldDraw = true);
 
