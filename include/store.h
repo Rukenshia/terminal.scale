@@ -23,7 +23,13 @@ private:
     void drawOrders();
     void loadOrders();
 
-    void recalcOrdersMenuButtons();
+    std::vector<Product> products;
+    bool productsLoaded = false;
+    uint productIndex = 0;
+    void drawProducts();
+    void loadProducts();
+
+    void recalcMenuButtons(int index, int size);
 
 public:
     Store(UI &uiInstance, TFT_eSPI &tftDisplay, Scale &scaleInstance, TerminalApi &terminalApi, LedStrip &ledStrip)
@@ -36,11 +42,18 @@ public:
     void nextOrder();
     void previousOrder();
 
+    void previousProduct();
+    void nextProduct();
+
     void reset()
     {
         orders = {};
         orderIndex = 0;
         ordersLoaded = false;
+
+        products = {};
+        productIndex = 0;
+        productsLoaded = false;
     };
 };
 

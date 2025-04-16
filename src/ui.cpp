@@ -51,7 +51,7 @@ void cursorBlinkTaskWrapper(void *parameter)
 }
 
 // Constructor
-UI::UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip, TerminalApi &terminalApi)
+UI::UI(TFT_eSPI &tftDisplay, LedStrip &ledStrip, TerminalApi &terminalApi)
     : tft(tftDisplay),
       ledStrip(ledStrip),
       imageLoader(tftDisplay),
@@ -200,7 +200,7 @@ void UI::wipeText(const TextBounds &bounds, int speed_ms)
 
 void UI::terminalAnimation()
 {
-    ledStrip->turnOnAnimation();
+    ledStrip.turnOnAnimation();
     tft.fillScreen(BACKGROUND_COLOR);
 
     const char *text = "terminal";
@@ -208,7 +208,7 @@ void UI::terminalAnimation()
     TextBounds bounds = typeText(text, config);
 
     delay(1500);
-    ledStrip->turnOffAnimation();
+    ledStrip.turnOffAnimation();
     delay(500);
 
     wipeText(bounds);
@@ -304,7 +304,8 @@ void UI::loop()
     drawMenu();
 
     if (menu->current == STORE ||
-        menu->current == STORE_ORDERS)
+        menu->current == STORE_ORDERS ||
+        menu->current == STORE_BROWSE)
     {
         store->draw();
         return;

@@ -96,7 +96,7 @@ class Store;
 class UI
 {
 public:
-    UI(TFT_eSPI &tftDisplay, LedStrip *ledStrip, TerminalApi &terminalApi);
+    UI(TFT_eSPI &tftDisplay, LedStrip &ledStrip, TerminalApi &terminalApi);
 
     Menu *menu;
     BagSelect *bagSelect;
@@ -131,7 +131,7 @@ public:
 private:
     TFT_eSPI &tft;
     TerminalApi &terminalApi;
-    LedStrip *ledStrip;
+    LedStrip &ledStrip;
     ImageLoader imageLoader;
     TaskHandle_t cursorBlinkTaskHandle;
     BlinkState *blinkState;

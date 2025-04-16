@@ -134,6 +134,9 @@ void Menu::handlePress(int buttonPin)
     case STORE_ORDERS:
         handlePressStoreOrders(buttonPin);
         break;
+    case STORE_BROWSE:
+        handlePressStoreBrowse(buttonPin);
+        break;
     default:
         Serial.println("Unknown menu type");
         break;
@@ -153,8 +156,8 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
     }
 
     if (
-        (current == STORE || current == STORE_ORDERS) &&
-        (menuType != STORE && menuType != STORE_ORDERS))
+        (current == STORE || current == STORE_ORDERS || current == STORE_BROWSE) &&
+        (menuType != STORE && menuType != STORE_ORDERS && menuType != STORE_BROWSE))
     {
         ui.store->reset();
     }
@@ -200,7 +203,9 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].text = "Retake";
         break;
     case STORE:
-        menuItems[0].visible = false;
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot.png";
+        menuItems[0].text = "Buy";
 
         menuItems[1].visible = true;
         menuItems[1].imagePath = "/dot.png";
@@ -223,6 +228,18 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].imagePath = "/right.png";
         menuItems[2].text = "Next";
         break;
+    case STORE_BROWSE:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/left.png";
+        menuItems[0].text = "Previous";
+
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Back";
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/right.png";
+        menuItems[2].text = "Next";
     default:
         Serial.println("Unknown Menu Selected");
         break;
@@ -324,6 +341,29 @@ void Menu::handlePressStoreOrders(int buttonPin)
         break;
     case PIN_TOPRIGHT:
         ui.store->nextOrder();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressStoreBrowse(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        ui.store->previousProduct();
+        break;
+    case PIN_TOPMIDDLE:
+        this->selectMenu(STORE);
+        ui.store->taint();
+        break;
+    case PIN_TOPRIGHT:
+        ui.store->nextProduct();
+        break;
+    case PIN_TERMINAL_BUTTON:
+        // TODO: buy
         break;
     default:
         Serial.println("Unknown Button Pressed");

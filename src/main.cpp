@@ -30,7 +30,7 @@ TFT_eSPI tft = TFT_eSPI();
 LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
-UI ui = UI(tft, &ledStrip, terminalApi);
+UI ui = UI(tft, ledStrip, terminalApi);
 PreferencesManager preferences = PreferencesManager();
 Scale scaleManager(scale, tft, ui, preferences, terminalApi, PIN_DT, PIN_SCK);
 
