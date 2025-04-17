@@ -1,5 +1,6 @@
 #include "store.h"
 #include "debug.h"
+#include "buttons.h"
 
 void Store::exit()
 {
@@ -249,3 +250,154 @@ void Store::nextProduct()
     recalcMenuButtons(productIndex, products.size());
     taint();
 }
+
+void Store::buyProduct()
+{
+    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
+    tft.fillScreen(BACKGROUND_COLOR);
+    tft.setTextColor(TEXT_COLOR);
+
+    auto tw = tft.textWidth("Hold to buy");
+    tft.setCursor(tft.width() / 2 - tw / 2, tft.height() / 2);
+    tft.print("Hold to buy");
+
+    uint16_t circleSize = 0;
+    const uint16_t maxCircleSize = max(tft.width(), tft.height());
+
+    // animation should take 3 seconds
+    const uint16_t animationDuration = 3000;
+    const uint16_t stepSize = maxCircleSize / (animationDuration / 10);
+
+    while (digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
+    {
+        tft.fillCircle(tft.width() / 2, tft.height() / 2, circleSize, ACCENT_COLOR);
+        tft.print("Hold to buy");
+
+        ledStrip.progress(circleSize / maxCircleSize);
+        circleSize += stepSize;
+
+        if (circleSize > maxCircleSize)
+        {
+            break;
+        }
+        delay(10);
+    }
+
+    tft.fillScreen(BACKGROUND_COLOR);
+    auto bounds = ui.typeText("Clearing cart...", titleText);
+    if (terminalApi.clearCart())
+    {
+        Serial.println("Cart cleared");
+    }
+    else
+    {
+        Serial.println("Failed to clear cart");
+    }
+
+    ui.wipeText(bounds);
+    bounds = ui.typeText("Adding to cart...");
+    Cart *cart = terminalApi.addItemToCart(products[productIndex].variants[0].id.c_str(), 1);
+    if (!cart)
+    {
+        taint();
+        ui.menu->taint();
+        return;
+    }
+
+    bounds = ui.typeText(String("Subtotal: $" + String(cart->subtotal / 10)).c_str(), titleText);
+    delay(3000);
+    ui.wipeText(bounds);
+
+    bounds = ui.typeText("Placing order...", titleText);
+    Order *order = terminalApi.convertCartToOrder();
+    if (!order)
+    {
+        taint();
+        ui.menu->taint();
+        return;
+    }
+
+    ui.wipeText(bounds);
+    ui.typeText("Order placed", accentText);
+    delay(5000);
+    ui.wipeText(bounds);
+
+    taint();
+    ui.menu->selectMenu(MAIN_MENU);
+}
+
+// void order()
+// {
+//   Serial.println("Fetching products...");
+//   std::vector<Product> products = terminalApi.getProducts();
+//   Serial.printf("Found %d products\n", products.size());
+
+//   auto bounds = ui.typeText("Product: ");
+//   delay(1000);
+//   ui.wipeText(bounds);
+
+//   ui.typeText(products[0].name.c_str(), accentText);
+//   delay(5000);
+//   ui.wipeText(bounds);
+
+//   bounds = ui.typeText("Clearing cart...", titleText);
+//   if (terminalApi.clearCart())
+//   {
+//     Serial.println("Cart cleared");
+//   }
+//   else
+//   {
+//     Serial.println("Failed to clear cart");
+//   }
+//   ui.wipeText(bounds);
+
+//   bounds = ui.typeText("Adding to cart...");
+//   Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
+//   if (cart)
+//   {
+//     Serial.println("Item added to cart");
+//     Serial.printf("Subtotal: %d\n", cart->subtotal);
+//     Serial.printf("Address ID: %s\n", cart->addressID.c_str());
+//     Serial.printf("Card ID: %s\n", cart->cardID.c_str());
+
+//     ui.wipeText(bounds);
+
+//     bounds = ui.typeText("Cart subtotal: ");
+
+//     TextConfig subtotalConfig = ui.createTextConfig(MAIN_FONT);
+//     subtotalConfig.y = bounds.y + bounds.height + 8;
+//     subtotalConfig.enableCursor = false;
+//     auto bounds2 = ui.typeText(String(cart->subtotal).c_str(), subtotalConfig);
+//     ui.wipeText(bounds2);
+//     ui.wipeText(bounds);
+
+//     delay(5000);
+//   }
+//   else
+//   {
+//     Serial.println("Failed to add item to cart");
+//   }
+//   ui.wipeText(bounds);
+
+//   bounds = ui.typeText("Placing order...");
+//   Order *order = terminalApi.convertCartToOrder();
+//   if (order)
+//   {
+//     Serial.println("Order placed");
+//     Serial.printf("Order ID: %s\n", order->id.c_str());
+//     Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
+//     Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
+//     Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
+
+//     ui.wipeText(bounds);
+
+//     ui.typeText("Order placed", accentText);
+
+//     delay(5000);
+//   }
+//   else
+//   {
+//     Serial.println("Failed to place order");
+//   }
+//   ui.wipeText(bounds);
+// }

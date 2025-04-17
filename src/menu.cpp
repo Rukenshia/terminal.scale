@@ -363,7 +363,7 @@ void Menu::handlePressStoreBrowse(int buttonPin)
         ui.store->nextProduct();
         break;
     case PIN_TERMINAL_BUTTON:
-        // TODO: buy
+        ui.store->buyProduct();
         break;
     default:
         Serial.println("Unknown Button Pressed");

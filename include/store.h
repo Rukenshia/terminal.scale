@@ -44,6 +44,7 @@ public:
 
     void previousProduct();
     void nextProduct();
+    void buyProduct();
 
     void reset()
     {
