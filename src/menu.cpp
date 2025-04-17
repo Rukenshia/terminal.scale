@@ -314,6 +314,10 @@ void Menu::handlePressStore(int buttonPin)
 {
     switch (buttonPin)
     {
+    case PIN_TOPLEFT:
+        this->selectMenu(STORE_BROWSE);
+        ui.store->taint();
+        break;
     case PIN_TOPMIDDLE:
         ui.store->reset();
         this->selectMenu(MAIN_MENU);

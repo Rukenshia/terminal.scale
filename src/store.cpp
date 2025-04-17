@@ -37,17 +37,6 @@ void Store::draw()
 
     tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
     tft.setTextColor(ACCENT_COLOR);
-
-    const uint16_t startY = menuClearanceY + 40;
-
-    Serial.printf("Drawing store at %d\n", startY);
-
-    tft.setCursor(tft.width() - 20 - tft.textWidth("B") / 2, startY);
-    tft.print("B");
-    tft.setCursor(tft.width() - 20 - tft.textWidth("U") / 2, startY + tft.fontHeight() + 4);
-    tft.print("U");
-    tft.setCursor(tft.width() - 20 - tft.textWidth("Y") / 2, startY + tft.fontHeight() * 2 + 8);
-    tft.print("Y");
 }
 
 void Store::loadOrders()
@@ -93,6 +82,7 @@ void Store::drawOrders()
     if (!ordersLoaded)
     {
         loadOrders();
+        recalcMenuButtons(orderIndex, orders.size());
     }
 
     const uint16_t startY = 60 + 60;
@@ -142,10 +132,8 @@ void Store::recalcMenuButtons(int index, int size)
     if (shouldRedraw)
     {
         ui.menu->redraw();
+        ledStrip.progress((float)index / (size - 1), RgbColor(255 / 3, 94 / 3, 0));
     }
-
-    // Update LED Strip to show the progress (how far have we scrolled through the list of orders)
-    ledStrip.progress(index / size);
 }
 
 void Store::nextOrder()
@@ -177,6 +165,7 @@ void Store::drawProducts()
     if (!productsLoaded)
     {
         loadProducts();
+        recalcMenuButtons(productIndex, products.size());
     }
 
     const uint16_t startY = 60 + 60;
@@ -195,6 +184,15 @@ void Store::drawProducts()
     tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
     tft.setTextColor(TEXT_COLOR);
     tft.print(subheader.c_str());
+
+    tft.setFreeFont(&GeistMono_VariableFont_wght14pt7b);
+    tft.setTextColor(ACCENT_COLOR);
+    tft.setCursor(tft.width() - 20 - tft.textWidth("B") / 2, startY);
+    tft.print("B");
+    tft.setCursor(tft.width() - 20 - tft.textWidth("U") / 2, startY + tft.fontHeight() + 4);
+    tft.print("U");
+    tft.setCursor(tft.width() - 20 - tft.textWidth("Y") / 2, startY + tft.fontHeight() * 2 + 8);
+    tft.print("Y");
 }
 
 void Store::loadProducts()
@@ -204,7 +202,10 @@ void Store::loadProducts()
     ui.startBlinking();
 
 #ifdef NO_WIFI
-    products = {};
+    products = std::vector<Product>{
+        Product{"id1", "flow", "coffee", {Variant{"id1", "Variant 1", 1000}}},
+        Product{"id2", "[object Object]", "covfefe", {Variant{"id2", "Variant 2", 2000}}},
+    };
 #else
     products = terminalApi.getProducts();
 #endif
@@ -260,6 +261,7 @@ void Store::buyProduct()
     auto tw = tft.textWidth("Hold to buy");
     tft.setCursor(tft.width() / 2 - tw / 2, tft.height() / 2);
     tft.print("Hold to buy");
+    delay(1000);
 
     uint16_t circleSize = 0;
     const uint16_t maxCircleSize = max(tft.width(), tft.height());
@@ -268,19 +270,34 @@ void Store::buyProduct()
     const uint16_t animationDuration = 3000;
     const uint16_t stepSize = maxCircleSize / (animationDuration / 10);
 
-    while (digitalRead(PIN_TERMINAL_BUTTON) == HIGH)
+    Serial.printf("Circle size: %d, max circle size: %d, step size: %d\n", circleSize, maxCircleSize, stepSize);
+
+    bool finished = false;
+    while (digitalRead(PIN_TERMINAL_BUTTON) == LOW)
     {
         tft.fillCircle(tft.width() / 2, tft.height() / 2, circleSize, ACCENT_COLOR);
         tft.print("Hold to buy");
 
-        ledStrip.progress(circleSize / maxCircleSize);
+        float percentage = (float)circleSize / maxCircleSize;
+        auto color = RgbColor::LinearBlend(
+            RgbColor(194, 126, 0),
+            RgbColor(255, 94, 0), percentage);
+        ledStrip.progress(percentage, color);
         circleSize += stepSize;
 
         if (circleSize > maxCircleSize)
         {
+            finished = true;
             break;
         }
         delay(10);
+    }
+    if (!finished)
+    {
+        ui.menu->taint();
+        taint();
+        ledStrip.turnOff();
+        return;
     }
 
     tft.fillScreen(BACKGROUND_COLOR);
