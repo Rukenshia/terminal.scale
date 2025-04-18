@@ -494,7 +494,7 @@ void Scale::drawBaristaMode()
 
     tft.setTextColor(textColor);
     tft.setCursor(xOffset, progressY + progressHeight - 8);
-    tft.print(String(weight, 1) + " g");
+    tft.print(String(weight, 1) + "g");
 
     xOffset += readingWidth;
     tft.setCursor(xOffset, progressY + progressHeight - 8);
