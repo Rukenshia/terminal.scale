@@ -28,8 +28,7 @@ void Store::draw()
     }
 
     // clear the screen except menu clearance
-    const uint16_t menuClearanceY = 60;
-    tft.fillRect(0, menuClearanceY, tft.width(), tft.height() - menuClearanceY, BACKGROUND_COLOR);
+    tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
 
     auto bounds = ui.typeText("Store", titleText);
     delay(1000);
@@ -85,10 +84,11 @@ void Store::drawOrders()
         recalcMenuButtons(orderIndex, orders.size());
     }
 
-    const uint16_t startY = 60 + 60;
+    tft.fillRect(0, Menu::menuClearance - tft.fontHeight(), tft.width(), tft.height(), BACKGROUND_COLOR);
+
+    const uint16_t startY = Menu::menuClearance + 60;
 
     tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
-    tft.fillRect(0, startY - tft.fontHeight(), tft.width(), tft.height(), BACKGROUND_COLOR);
 
     tft.setTextColor(ACCENT_COLOR);
     tft.setCursor(20, startY);
@@ -132,7 +132,13 @@ void Store::recalcMenuButtons(int index, int size)
     if (shouldRedraw)
     {
         ui.menu->redraw();
-        ledStrip.progress((float)index / (size - 1), RgbColor(255 / 3, 94 / 3, 0));
+        float progress = (float)index / (size - 1);
+        if (progress < 0.1)
+        {
+            progress = 0.1;
+        }
+
+        ledStrip.progress(progress, RgbColor(255 / 4, 94 / 4, 0));
     }
 }
 
@@ -168,31 +174,36 @@ void Store::drawProducts()
         recalcMenuButtons(productIndex, products.size());
     }
 
-    const uint16_t startY = 60 + 60;
-
-    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
-    tft.fillRect(0, startY - tft.fontHeight(), tft.width(), tft.height(), BACKGROUND_COLOR);
-
-    tft.setTextColor(ACCENT_COLOR);
-    tft.setCursor(20, startY);
-
-    auto &product = products[productIndex];
-    tft.print(product.id.c_str());
-
-    String subheader = product.variants[0].name + " - $" + (product.variants[0].price / 10);
-    tft.setCursor(20, startY + tft.fontHeight() + 4);
-    tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
-    tft.setTextColor(TEXT_COLOR);
-    tft.print(subheader.c_str());
+    uint16_t y = 60 + 60;
+    tft.fillRect(0, Menu::menuClearance - tft.fontHeight(), tft.width(), tft.height(), BACKGROUND_COLOR);
 
     tft.setFreeFont(&GeistMono_VariableFont_wght14pt7b);
     tft.setTextColor(ACCENT_COLOR);
-    tft.setCursor(tft.width() - 20 - tft.textWidth("B") / 2, startY);
+    tft.setCursor(tft.width() - 20 - tft.textWidth("B") / 2, y);
     tft.print("B");
-    tft.setCursor(tft.width() - 20 - tft.textWidth("U") / 2, startY + tft.fontHeight() + 4);
+    tft.setCursor(tft.width() - 20 - tft.textWidth("U") / 2, y + tft.fontHeight() + 4);
     tft.print("U");
-    tft.setCursor(tft.width() - 20 - tft.textWidth("Y") / 2, startY + tft.fontHeight() * 2 + 8);
+    tft.setCursor(tft.width() - 20 - tft.textWidth("Y") / 2, y + tft.fontHeight() * 2 + 8);
     tft.print("Y");
+
+    y += 20;
+
+    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
+
+    tft.setTextColor(ACCENT_COLOR);
+    tft.setCursor(20, y);
+
+    auto &product = products[productIndex];
+    ui.setIdealFont(product.name.c_str());
+    tft.print(product.name.c_str());
+
+    y += 40;
+    tft.setCursor(20, y);
+
+    String subheader = product.variants[0].name + " - $" + (product.variants[0].price / 10);
+    ui.setIdealFont(subheader.c_str(), nonTitleFonts);
+    tft.setTextColor(TEXT_COLOR);
+    tft.print(subheader.c_str());
 }
 
 void Store::loadProducts()
@@ -203,8 +214,8 @@ void Store::loadProducts()
 
 #ifdef NO_WIFI
     products = std::vector<Product>{
-        Product{"id1", "flow", "coffee", {Variant{"id1", "Variant 1", 1000}}},
-        Product{"id2", "[object Object]", "covfefe", {Variant{"id2", "Variant 2", 2000}}},
+        Product{"id1", "flow", "coffee", {Variant{"id1", "12oz", 1000}}},
+        Product{"id2", "[object Object]", "covfefe", {Variant{"id2", "24oz", 2000}}},
     };
 #else
     products = terminalApi.getProducts();
@@ -261,42 +272,51 @@ void Store::buyProduct()
     auto tw = tft.textWidth("Hold to buy");
     tft.setCursor(tft.width() / 2 - tw / 2, tft.height() / 2);
     tft.print("Hold to buy");
+
+    const uint16_t initialCircleSize = 20;
+    const uint16_t animationDuration = 3000; // 3 seconds total
+    const uint16_t maxCircleSize = tft.width() * 2 + initialCircleSize / 2;
+    const uint16_t circleX = tft.width() + initialCircleSize / 2;
+    const uint16_t circleY = tft.height() / 2 + 40;
+
+    tft.fillCircle(circleX, circleY, initialCircleSize, ACCENT_COLOR);
     delay(1000);
 
-    uint16_t circleSize = 0;
-    const uint16_t maxCircleSize = max(tft.width(), tft.height());
-
-    // animation should take 3 seconds
-    const uint16_t animationDuration = 3000;
-    const uint16_t stepSize = maxCircleSize / (animationDuration / 10);
-
-    Serial.printf("Circle size: %d, max circle size: %d, step size: %d\n", circleSize, maxCircleSize, stepSize);
-
     bool finished = false;
+    unsigned long startTime = millis();
+    unsigned long elapsedTime = 0;
+
+    uint16_t circleSize = initialCircleSize;
+
     while (digitalRead(PIN_TERMINAL_BUTTON) == LOW)
     {
-        tft.fillCircle(tft.width() / 2, tft.height() / 2, circleSize, ACCENT_COLOR);
-        tft.print("Hold to buy");
+        elapsedTime = millis() - startTime;
 
-        float percentage = (float)circleSize / maxCircleSize;
+        float linearProgress = min(1.0f, (float)elapsedTime / animationDuration);
+        // Easing function: accelerate towards the end (ease-in-quad)
+        float easedProgress = linearProgress * linearProgress;
+        circleSize = (easedProgress * maxCircleSize) + initialCircleSize;
+
+        tft.fillCircle(circleX, circleY, circleSize, ACCENT_COLOR);
+
         auto color = RgbColor::LinearBlend(
             RgbColor(194, 126, 0),
-            RgbColor(255, 94, 0), percentage);
-        ledStrip.progress(percentage, color);
-        circleSize += stepSize;
+            RgbColor(255, 94, 0), linearProgress);
+        ledStrip.progress(linearProgress, color);
 
-        if (circleSize > maxCircleSize)
+        if (elapsedTime >= animationDuration)
         {
             finished = true;
             break;
         }
         delay(10);
     }
+
     if (!finished)
     {
         ui.menu->taint();
         taint();
-        ledStrip.turnOff();
+        recalcMenuButtons(productIndex, products.size());
         return;
     }
 

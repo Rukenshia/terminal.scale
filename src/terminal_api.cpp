@@ -79,12 +79,7 @@ std::vector<Order> TerminalApi::getOrders()
 {
     std::vector<Order> orders;
 
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return orders;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/order";
@@ -153,12 +148,7 @@ std::vector<Order> TerminalApi::getOrders()
 // DELETE /cart
 bool TerminalApi::clearCart()
 {
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return false;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/cart";
@@ -177,12 +167,7 @@ bool TerminalApi::clearCart()
 // GET /cart
 Cart *TerminalApi::getCart()
 {
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return nullptr;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/cart";
@@ -232,12 +217,7 @@ Cart *TerminalApi::getCart()
 // PUT /cart/item
 Cart *TerminalApi::addItemToCart(const char *productVariantID, uint32_t quantity)
 {
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return nullptr;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/cart/item";
@@ -295,12 +275,7 @@ Cart *TerminalApi::addItemToCart(const char *productVariantID, uint32_t quantity
 // POST /cart
 Order *TerminalApi::convertCartToOrder()
 {
-    // Make sure WiFi is connected
-    if (!wifiManager || !wifiManager->isConnected())
-    {
-        Serial.println("WiFi not connected or not initialized");
-        return nullptr;
-    }
+    wifiManager->reconnect();
 
     // Prepare request URL
     String url = String(BASE_URL) + "/cart/convert";

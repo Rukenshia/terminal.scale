@@ -104,9 +104,6 @@ bool ImageLoader::drawPNG(const char *filename, int16_t x, int16_t y)
     uint16_t width = png.getWidth();
     uint16_t height = png.getHeight();
 
-    Serial.printf("PNG dimensions: %d x %d, %d bpp, pixel type: %d\n",
-                  width, height, png.getBpp(), png.getPixelType());
-
     // Process and decode the PNG file
     result = png.decode(nullptr, 0);
 
@@ -231,7 +228,7 @@ void ImageLoader::drawPNGLine(PNGDRAW *pDraw)
 
         // Write the line to the TFT display
         tft.pushMaskedImage(xPos, yPos + pDraw->y, pDraw->iWidth, 1, lineBuffer, maskBuffer);
-        }
+    }
 }
 
 // File system callback functions

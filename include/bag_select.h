@@ -17,14 +17,17 @@ private:
     TFT_eSPI &tft;
     UI &ui;
     Scale *scaleManager;
+    LedStrip &ledStrip;
 
     std::vector<String> bags;
 
     uint selectedBagIndex = 0;
     bool needsRedraw = false;
 
+    void drawProgress();
+
 public:
-    BagSelect(TFT_eSPI &tftDisplay, UI &uiInstance);
+    BagSelect(TFT_eSPI &tftDisplay, UI &uiInstance, LedStrip &ledStrip);
     void begin(Scale *scaleManagerInstance)
     {
         scaleManager = scaleManagerInstance;

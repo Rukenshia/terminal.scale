@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 #include <Adafruit_GFX.h>
+#include <vector>
 #include "image_loader.h"
 #include "menu.h"
 #include "led.h"
@@ -24,6 +25,10 @@ class Scale;
 #define BAG_COLOR 0x736C
 
 #define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
+
+const std::vector<const GFXfont *> nonTitleFonts = {
+    &GeistMono_VariableFont_wght12pt7b,
+    &GeistMono_VariableFont_wght10pt7b};
 
 // Text bounds structure to store position and dimensions of typed text
 struct TextBounds
@@ -110,6 +115,11 @@ public:
 
     // Typing animation that displays text letter by letter using configuration
     TextBounds typeText(const char *text, const TextConfig &config = defaultText);
+    TextBounds typeBoundedText(const char *text, TextConfig config = defaultText, std::vector<const GFXfont *> fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
+    const GFXfont *getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
+    // Get ideal font that doesn't clip the tft, returns width
+    int16_t setIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
+    int16_t setIdealFont(const char *text, uint16_t padding, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
 
     // Wipe animation for text that was displayed with typeText
     void wipeText(const TextBounds &bounds, int speed_ms = 1);

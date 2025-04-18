@@ -58,6 +58,8 @@ private:
     void handlePressStoreBrowse(int buttonPin);
 
 public:
+    static const uint16_t menuClearance = 80;
+
     Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance);
     MenuType current;
 

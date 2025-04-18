@@ -60,7 +60,7 @@ UI::UI(TFT_eSPI &tftDisplay, LedStrip &ledStrip, TerminalApi &terminalApi)
       terminalApi(terminalApi)
 {
     this->menu = new Menu(tftDisplay, *this, imageLoader);
-    this->bagSelect = new BagSelect(tftDisplay, *this);
+    this->bagSelect = new BagSelect(tftDisplay, *this, ledStrip);
     this->store = new Store(*this, tftDisplay, *scaleManager, terminalApi, ledStrip);
     memset(&lastCursorState, 0, sizeof(TextBounds));
 }
@@ -170,6 +170,60 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
     return bounds;
 }
 
+const GFXfont *UI::getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts)
+{
+    const GFXfont *idealFont = fonts.back(); // default to smallest font
+
+    for (const auto &font : fonts)
+    {
+        tft.setFreeFont(font);
+        int16_t textWidth = tft.textWidth(text);
+
+        if (textWidth < tft.width() - 16)
+        {
+            idealFont = font;
+            break;
+        }
+    }
+
+    return idealFont;
+}
+
+int16_t UI::setIdealFont(const char *text, uint16_t padding, const std::vector<const GFXfont *> &fonts)
+{
+    const GFXfont *idealFont = fonts.back(); // default to smallest font
+    int16_t textWidth = tft.textWidth(text);
+
+    for (const auto &font : fonts)
+    {
+        Serial.printf("idealfontloop\n");
+        tft.setFreeFont(font);
+        int16_t fontTextWidth = tft.textWidth(text);
+
+        if (fontTextWidth < tft.width() - padding)
+        {
+            Serial.printf("ideal font: has width %d which is < %d\n", fontTextWidth, tft.width() - padding);
+            idealFont = font;
+            textWidth = fontTextWidth;
+            break;
+        }
+    }
+
+    return textWidth;
+}
+
+int16_t UI::setIdealFont(const char *text, const std::vector<const GFXfont *> &fonts)
+{
+    return setIdealFont(text, 16, fonts);
+}
+
+TextBounds UI::typeBoundedText(const char *text, TextConfig config, std::vector<const GFXfont *> fonts)
+{
+    auto idealFont = getIdealFont(text, fonts);
+    config.font = idealFont;
+    return typeText(text, config);
+}
+
 void UI::wipeText(const TextBounds &bounds, int speed_ms)
 {
     int16_t cursorX = bounds.cursorX;
@@ -270,6 +324,7 @@ void UI::stopBlinking()
     if (cursorBlinkTaskHandle != NULL)
     {
         // Delete the task
+        blinkState->isVisible = true; // in case the task is still running
         vTaskDelete(cursorBlinkTaskHandle);
         cursorBlinkTaskHandle = NULL;
 
@@ -317,19 +372,22 @@ void UI::loop()
         return;
     }
 
-    if (scaleManager->bagRemovedFromSurface)
+    if (scaleManager->bagRemovedFromSurface || !scaleManager->hasBag)
     {
         if (!drawnBagNotFound)
         {
             unsigned long currentTime = millis();
             auto textConfig = createTextConfig(&GeistMono_VariableFont_wght14pt7b);
             textConfig.y = tft.height() / 2 + titleText.font->yAdvance + 8;
-            textConfig.enableCursor = false;
             // FIXME: should probably be a background task?
             tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
                          tft.width(), tft.height(), BACKGROUND_COLOR);
-            auto bounds = typeText("404", titleText);
-            typeText("Bag not found", textConfig);
+
+            auto titleTextConfig = titleText;
+            titleTextConfig.enableCursor = false;
+
+            auto bounds = typeText("404", titleTextConfig);
+            bounds = typeText("Bag not found", textConfig);
             startBlinkingAt(bounds);
 
             drawnBagNotFound = true;
@@ -358,6 +416,7 @@ void UI::drawWeight(float weight)
     {
         return;
     }
+    Serial.printf("draw weight %f vs old reading %f\n", weight, lastDrawnReading);
     lastDrawnReading = weight;
 
     float progress = max(min(weight / TERMINAL_COFFEE_WEIGHT, 1.0f), 0.0f);

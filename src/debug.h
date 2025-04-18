@@ -2,9 +2,9 @@
 #define DEBUG_H
 
 #define FAST_STARTUP
-#define NO_WIFI
+// #define NO_WIFI
 
 // #define WEIGHING_UI_DEBUG
-// #define SERIAL_LISTEN
+#define SERIAL_LISTEN
 
 #endif

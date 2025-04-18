@@ -14,6 +14,14 @@ void PreferencesManager::end()
     preferences.end();
 }
 
+void PreferencesManager::deleteCalibrationData()
+{
+    begin();
+    preferences.remove("cf");
+    preferences.remove("zo");
+    end();
+}
+
 void PreferencesManager::setScaleCalibrationFactor(float factor)
 {
     begin();

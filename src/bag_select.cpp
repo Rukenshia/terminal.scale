@@ -1,7 +1,8 @@
 #include "bag_select.h"
 
-BagSelect::BagSelect(TFT_eSPI &tftDisplay, UI &uiInstance)
-    : tft(tftDisplay), ui(uiInstance)
+BagSelect::BagSelect(TFT_eSPI &tftDisplay, UI &uiInstance, LedStrip &ledStrip)
+    : tft(tftDisplay), ui(uiInstance),
+      ledStrip(ledStrip)
 {
 }
 
@@ -13,14 +14,13 @@ void BagSelect::draw()
     }
     needsRedraw = false;
 
-    const uint16_t menuClearanceY = 60;
-
-    tft.fillRect(0, menuClearanceY, tft.width(), tft.height() - menuClearanceY, BACKGROUND_COLOR);
+    tft.fillRect(0, Menu::menuClearance - 24, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
+    ui.menu->redraw();
 
     tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
     tft.setTextColor(PREVIEW_COLOR);
 
-    const uint16_t yPos = menuClearanceY + 20;
+    const uint16_t yPos = Menu::menuClearance - 28;
 
     if (selectedBagIndex > 0)
     {
@@ -46,25 +46,27 @@ void BagSelect::draw()
         tft.print(text);
     }
 
-    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
-
-    if (tft.textWidth(bags[selectedBagIndex]) > tft.width())
-    {
-        tft.setFreeFont(&GeistMono_VariableFont_wght14pt7b);
-    }
+    ui.setIdealFont(bags[selectedBagIndex].c_str(), 30);
 
     tft.setTextColor(SELECTED_COLOR);
-    tft.setCursor((tft.width() - tft.textWidth(bags[selectedBagIndex])) / 2, yPos + 60);
+    tft.setCursor(20, tft.height() / 2 + 20);
     tft.print(bags[selectedBagIndex]);
+
+    tft.setTextColor(TEXT_COLOR);
+    tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+    tft.setCursor(20, tft.height() / 2 + 20 + 40);
+    tft.print("12oz bag");
 }
 
 void BagSelect::confirmBagSelection()
 {
+    ledStrip.turnOff();
     scaleManager->loadBag(bags[selectedBagIndex]);
 }
 
 void BagSelect::cancelBagSelection()
 {
+    ledStrip.turnOff();
     tft.fillScreen(BACKGROUND_COLOR);
 
     ui.menu->selectMenu(MAIN_MENU);
@@ -93,4 +95,15 @@ bool BagSelect::selectPreviousBag()
         return true;
     }
     return false;
+}
+
+void BagSelect::drawProgress()
+{
+    float progress = selectedBagIndex / (float)bags.size() - 1;
+    if (progress < 0.1)
+    {
+        progress = 0.1;
+    }
+
+    ledStrip.progress(progress, RgbColor(255 / 4, 94 / 4, 0));
 }

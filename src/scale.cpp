@@ -290,14 +290,13 @@ float Scale::readWeight(int samples)
     if (scale.wait_ready_timeout(200))
     {
         float reading = scale.get_units(samples);
-        lastReading = reading;
 
         if (hasBag)
         {
-            lastReading = reading - TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
-            return reading - TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
+            reading -= TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
         }
 
+        lastReading = reading;
         return reading;
     }
     return -1;
@@ -338,9 +337,13 @@ void Scale::backgroundWeighingTask(void *parameter)
 
         minReading = min(minReading, reading);
         maxReading = max(maxReading, reading);
-        lastReading = reading;
 
-        Serial.printf("hasBag=%d, reading=%.1f min=%.1f max=%.1f\n", scale->hasBag, reading, minReading, maxReading);
+        if (reading != lastReading)
+        {
+            Serial.printf("hasBag=%d, reading=%.1f min=%.1f max=%.1f\n", scale->hasBag, reading, minReading, maxReading);
+        }
+
+        lastReading = reading;
 
         if (scale->hasBag && reading < 0)
         {

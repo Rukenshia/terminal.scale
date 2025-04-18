@@ -174,9 +174,9 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 
         menuItems[1].visible = false;
 
-        menuItems[2].visible = true;
-        menuItems[2].imagePath = "/dot.png";
-        menuItems[2].text = "Calibrate";
+        menuItems[2].visible = false;
+        // menuItems[2].imagePath = "/dot.png";
+        // menuItems[2].text = "Calibrate";
         break;
     case SELECT_BAG:
         menuItems[0].visible = true;
@@ -263,7 +263,7 @@ void Menu::handlePressMainMenu(int buttonPin)
     case PIN_TOPRIGHT:
         // Request calibration instead of directly calling calibrate()
         // This is safe to call from an interrupt context
-        scaleManager.requestCalibration();
+        // scaleManager.requestCalibration();
         break;
     case PIN_TERMINAL_BUTTON:
         selectMenu(MenuType::STORE);
@@ -388,7 +388,7 @@ void Menu::draw()
     tainted = false;
 
     // Clear the top menu area
-    tft.fillRect(0, 0, tft.width(), 60, BACKGROUND_COLOR);
+    tft.fillRect(0, 0, tft.width(), Menu::menuClearance, BACKGROUND_COLOR);
 
     // Define positions for the menu icons
     const int16_t iconWidth = 24;  // Estimated width of icons

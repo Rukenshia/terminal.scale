@@ -17,6 +17,7 @@ public:
     bool isScaleCalibrated();
     void setScaleCalibrationFactor(float calibrationFactor);
     void setScaleZeroOffset(long zeroOffset);
+    void deleteCalibrationData();
 
     float getScaleCalibrationFactor();
     long getScaleZeroOffset();

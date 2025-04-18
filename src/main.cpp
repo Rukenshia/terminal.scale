@@ -118,6 +118,13 @@ void loop()
 
       Serial.printf("Updated bag name to: %s\n", bagName.c_str());
     }
+
+    if (input.startsWith("calibrate"))
+    {
+      Serial.println("Resetting calibration");
+      preferences.deleteCalibrationData();
+      esp_restart();
+    }
   }
 #endif
 
