@@ -471,7 +471,7 @@ void Scale::drawBaristaMode()
         textColor = TEXT_COLOR_GREEN;
         ledStrip.setColor(RgbColor(0, 32, 0));
     }
-    else if (diff >= 0.6f)
+    else if (progress > 1.0f)
     {
         textColor = TEXT_COLOR_RED;
         ledStrip.setColor(RgbColor(32, 0, 0));
