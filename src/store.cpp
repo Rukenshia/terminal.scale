@@ -254,6 +254,18 @@ void Store::loadProducts()
 #else
     products = terminalApi.getProducts();
 #endif
+
+    // FIXME: would be nice to support more than 12oz bags
+    // @terminal.shop when in europe?
+    for (auto &product : products)
+    {
+        product.variants.erase(
+            std::remove_if(product.variants.begin(), product.variants.end(),
+                           [](const Variant &variant)
+                           { return variant.name != "12oz"; }),
+            product.variants.end());
+    }
+
     productsLoaded = true;
 
     ui.wipeText(bounds);

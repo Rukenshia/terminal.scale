@@ -5,8 +5,6 @@
 #include <vector>
 #include "wifi_manager.h"
 
-#define BASE_URL "https://api.dev.terminal.shop"
-
 template <typename T>
 struct ApiResponse
 {

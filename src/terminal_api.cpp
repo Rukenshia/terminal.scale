@@ -1,4 +1,5 @@
 #include "terminal_api.h"
+#include "wifi.secret.h"
 #include <ArduinoJson.h>
 
 TerminalApi::TerminalApi()
@@ -22,7 +23,7 @@ std::vector<Product> TerminalApi::getProducts()
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/product";
+    String url = String(TERMINAL_API_URL) + "/product";
     String response;
 
     if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
@@ -82,7 +83,7 @@ std::vector<Order> TerminalApi::getOrders()
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/order";
+    String url = String(TERMINAL_API_URL) + "/order";
     String response;
 
     if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
@@ -166,7 +167,7 @@ bool TerminalApi::clearCart()
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/cart";
+    String url = String(TERMINAL_API_URL) + "/cart";
     String response;
 
     if (wifiManager->request(url.c_str(), "DELETE", "", response, tokenHeader.c_str()))
@@ -185,7 +186,7 @@ Cart *TerminalApi::getCart()
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/cart";
+    String url = String(TERMINAL_API_URL) + "/cart";
     String response;
 
     if (wifiManager->request(url.c_str(), "GET", "", response, tokenHeader.c_str()))
@@ -235,7 +236,7 @@ Cart *TerminalApi::addItemToCart(const char *productVariantID, uint32_t quantity
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/cart/item";
+    String url = String(TERMINAL_API_URL) + "/cart/item";
     String response;
 
     // Create JSON payload
@@ -293,7 +294,7 @@ Order *TerminalApi::convertCartToOrder()
     wifiManager->reconnect();
 
     // Prepare request URL
-    String url = String(BASE_URL) + "/cart/convert";
+    String url = String(TERMINAL_API_URL) + "/cart/convert";
     String response;
 
     if (wifiManager->request(url.c_str(), "POST", "", response, tokenHeader.c_str()))
