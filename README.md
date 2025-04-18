@@ -27,6 +27,30 @@ This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy
 - The reverse-coffee scale: enter the barista mode and let the scale tell you when you took enough coffee out of the bag.
 - AI: I don't know why but my OKRs tell me that I need to add AI to everything.
 
+## Usage
+
+### Continuous Weighing
+
+The scale is configured to take a measurement every second. It detects if a bag is removed from the surface (for example when you are taking it off so that you can get the beans you need). If the bag is placed on the scale and the weight falls below 150g (configurable in [`src/scale.h`](src/scale.h)), the scale will start showing a `Reorder` button on the top right menu. Pressing this button will take you to the terminal.shop website where you can reorder the bag.
+Once the weight falls below 100g, you will be prompted whether you would like to reorder the same bag. Dismissing the prompt will mute it until you switch menus, restart the scale, or the weight goes back above 100g.
+
+### Loading Bags
+
+1. Press the `Load Bag` button on the top left
+1. Select the bag you want to load, follow on-screen instructions
+
+### Store
+
+You can open the store from the main menu by pressing the orange `Terminal` button to the right of the screen. This will take you to the landing page of the store. From there, you can view your order history or browse the store's products.
+
+#### Order History
+
+You can scroll through your order history and see the order ID, the date you ordered, and if available the delivery status.
+
+#### Browsing the Store
+
+You can scroll through the currently available products. Currently, only `12oz` variants are displayed. You can order your coffee by pressing and holding the `Terminal` button for a few seconds (just follow the on-screen instructions).
+
 ## Parts
 
 > [!NOTE]
@@ -102,7 +126,7 @@ If you want to save on some cost, the LED strip is the least useful thing in thi
    - Make sure that the weighing surface is not touching the walls or anything else is pushing on it
 1. Install the terminal button and top menu button caps by squeezing it on the PCB button (you might need to re-print with a different scale or glue it in place)
 
-## Software
+### Software
 
 To compile the code, you will need to use [`PlatformIO`](https://platformio.org/). I personally used the VSCode extension (I use neovim btw, but there is no good support for PlatformIO or Arduino).
 
@@ -126,30 +150,6 @@ To compile the code, you will need to use [`PlatformIO`](https://platformio.org/
 
 1. Build and upload the code to the ESP32
 
-## Calibration
+### Calibration
 
 On first startup, you will be automatically put into calibration mode. Attach a Serial listener to the USB port and follow the instructions. Please note that the calibration weight needs to be input as _milligrams_ instead of grams. Once calibrated, you will no longer need any connection to the ESP32.
-
-## Usage
-
-### Continuous Weighing
-
-The scale is configured to take a measurement every second. It detects if a bag is removed from the surface (for example when you are taking it off so that you can get the beans you need). If the bag is placed on the scale and the weight falls below 150g (configurable in [`src/scale.h`](src/scale.h)), the scale will start showing a `Reorder` button on the top right menu. Pressing this button will take you to the terminal.shop website where you can reorder the bag.
-Once the weight falls below 100g, you will be prompted whether you would like to reorder the same bag. Dismissing the prompt will mute it until you switch menus, restart the scale, or the weight goes back above 100g.
-
-### Loading Bags
-
-1. Press the `Load Bag` button on the top left
-1. Select the bag you want to load, follow on-screen instructions
-
-### Store
-
-You can open the store from the main menu by pressing the orange `Terminal` button to the right of the screen. This will take you to the landing page of the store. From there, you can view your order history or browse the store's products.
-
-#### Order History
-
-You can scroll through your order history and see the order ID, the date you ordered, and if available the delivery status.
-
-#### Browsing the Store
-
-You can scroll through the currently available products. Currently, only `12oz` variants are displayed. You can order your coffee by pressing and holding the `Terminal` button for a few seconds (just follow the on-screen instructions).
