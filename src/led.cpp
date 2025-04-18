@@ -38,6 +38,7 @@ void LedStrip::animationTask(void *parameter)
 
     auto anim = [=]()
     {
+        // FIXME: the animator should really be a member of the class and act outside of the task
         NeoPixelAnimator animator(1);
         animator.StartAnimation(0, duration, [=](const AnimationParam &param)
                                 {

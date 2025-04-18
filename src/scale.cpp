@@ -279,7 +279,7 @@ void Scale::confirmLoadBag()
 
 float Scale::readWeight(int samples)
 {
-    if (scale.wait_ready_timeout(200))
+    if (scale.wait_ready_retry(3, 50))
     {
         float reading = scale.get_units(samples);
 
@@ -296,10 +296,20 @@ float Scale::readWeight(int samples)
 
 void Scale::tare()
 {
-    stopBackgroundWeighingTask();
-    delay(1000);
-    scale.tare();
-    startBackgroundWeighingTask();
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskSuspend(backgroundWeighingTaskHandle);
+    }
+
+    if (scale.wait_ready_retry(3, 50))
+    {
+        scale.tare();
+    }
+
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskResume(backgroundWeighingTaskHandle);
+    }
 }
 
 bool Scale::isCalibrated()
@@ -434,7 +444,11 @@ void Scale::drawBaristaMode()
 {
     // get current weight reading
     float weight = lastReading;
-    weight = abs(round(weight * 10.0f) / 10.0f);
+    weight = round(weight * 10.0f) / 10.0f;
+    if (weight == -0.0f)
+    {
+        weight = 0.0f;
+    }
 
     if (weight == baristaLastDrawnReading)
     {
@@ -451,12 +465,13 @@ void Scale::drawBaristaMode()
 
     auto textColor = TEXT_COLOR;
 
-    if (progress > 0.9f && progress < 1.1f)
+    auto diff = abs(target - weight);
+    if (diff < 0.6f)
     {
         textColor = TEXT_COLOR_GREEN;
         ledStrip.setColor(RgbColor(0, 32, 0));
     }
-    else if (progress > 1.0f)
+    else if (diff >= 0.6f)
     {
         textColor = TEXT_COLOR_RED;
         ledStrip.setColor(RgbColor(32, 0, 0));
@@ -488,19 +503,16 @@ void Scale::drawBaristaMode()
     // show weight vs target
     tft.setFreeFont(&GeistMono_VariableFont_wght16pt7b);
 
-    // get maximum width for a single reading
-    auto readingWidth = tft.textWidth("00.0 g");
-    auto xOffset = progressX + progressWidth;
-
+    String text = String(weight, 1) + "g";
+    auto textWidth = tft.textWidth(text.c_str());
+    tft.setCursor(progressX + progressWidth + 10, progressY + progressHeight - 8);
     tft.setTextColor(textColor);
-    tft.setCursor(xOffset, progressY + progressHeight - 8);
-    tft.print(String(weight, 1) + "g");
+    tft.print(text.c_str());
 
-    xOffset += readingWidth;
-    tft.setCursor(xOffset, progressY + progressHeight - 8);
-    tft.print("/");
-
-    tft.print((ui.menu->current == BARISTA_SINGLE) ? "12.0 g" : "21.0 g");
+    tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
+    text = "/ " + String(target, 1) + "g";
+    tft.setCursor(progressX + progressWidth + 10 + textWidth + 8, progressY + progressHeight - 8);
+    tft.print(text.c_str());
 
     if (progressBarFill == baristaLastProgress)
     {

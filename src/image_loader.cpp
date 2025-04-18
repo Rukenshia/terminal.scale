@@ -53,7 +53,6 @@ bool ImageLoader::checkImageFiles()
             fs::File file = LittleFS.open(filename, "r");
             if (file)
             {
-                Serial.printf("Found file: %s, size: %d bytes\n", filename, file.size());
                 file.close();
             }
             else
