@@ -145,6 +145,10 @@ void Menu::handlePress(int buttonPin)
     case STORE_BROWSE:
         handlePressStoreBrowse(buttonPin);
         break;
+    case BARISTA_SINGLE:
+    case BARISTA_DOUBLE:
+        handlePressBarista(buttonPin);
+        break;
     default:
         Serial.println("Unknown menu type");
         break;
@@ -202,7 +206,9 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[0].imagePath = "/dot.png";
         menuItems[0].text = "Load Bag";
 
-        menuItems[1].visible = false;
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Barista";
 
         menuItems[2].visible = false;
         // menuItems[2].imagePath = "/dot.png";
@@ -294,6 +300,23 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].visible = true;
         menuItems[2].imagePath = "/right.png";
         menuItems[2].text = "Next";
+        break;
+    case BARISTA_SINGLE:
+    case BARISTA_DOUBLE:
+        // Barista mode: toggle shot type or tare
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot.png";
+        menuItems[0].text = (menuType == BARISTA_SINGLE ? "Double" : "Single");
+
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Back";
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot.png";
+        menuItems[2].text = "Tare";
+
+        break;
     default:
         Serial.println("Unknown Menu Selected");
         break;
@@ -329,6 +352,9 @@ void Menu::handlePressMainMenu(int buttonPin)
     {
     case PIN_TOPLEFT:
         scaleManager.startLoadBag();
+        break;
+    case PIN_TOPMIDDLE:
+        scaleManager.enterBaristaMode();
         break;
     case PIN_TOPRIGHT:
         if (current == MAIN_MENU_REORDER)
@@ -461,6 +487,29 @@ void Menu::handlePressStoreBrowse(int buttonPin)
         break;
     default:
         Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressBarista(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        // toggle between single and double shot
+        selectMenu(current == BARISTA_SINGLE ? BARISTA_DOUBLE : BARISTA_SINGLE);
+        scaleManager.forceBaristaRedraw();
+        break;
+    case PIN_TOPMIDDLE:
+        // go back to main menu
+        scaleManager.leaveBaristaMode();
+        break;
+    case PIN_TOPRIGHT:
+        // tare scale
+        scaleManager.tare();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed in Barista");
         break;
     }
 }

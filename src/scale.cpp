@@ -3,7 +3,7 @@
 #include "ui.h"
 #include "bag_select.h"
 
-Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin)
+Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, LedStrip &ledStrip, int dt_pin, int sck_pin)
     : scale(scaleModule),
       tft(display),
       ui(uiSystem),
@@ -11,18 +11,12 @@ Scale::Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesMan
       terminalApi(terminalApi),
       PIN_DT(dt_pin),
       PIN_SCK(sck_pin),
-      calibrationRequested(false)
+      calibrationRequested(false),
+      ledStrip(ledStrip)
 {
     calibrationFactor = 0.0;
     zeroOffset = 0;
-
-    xTaskCreate(
-        backgroundWeighingTask,
-        "BackgroundWeighing",
-        4096,
-        this,
-        4,
-        &backgroundWeighingTaskHandle);
+    startBackgroundWeighingTask();
 }
 
 void Scale::begin()
@@ -75,11 +69,7 @@ bool Scale::checkCalibrationRequest()
 
 void Scale::calibrate()
 {
-    if (backgroundWeighingTaskHandle != NULL)
-    {
-        vTaskDelete(backgroundWeighingTaskHandle);
-        backgroundWeighingTaskHandle = NULL;
-    }
+    stopBackgroundWeighingTask();
 
     tft.fillScreen(TFT_BLACK);
 
@@ -207,13 +197,7 @@ void Scale::loadBag(String name)
 {
     Serial.println("Loading bag");
 
-    if (backgroundWeighingTaskHandle != NULL)
-    {
-        Serial.println("Deleting background weighing task");
-        delay(1000);
-        vTaskDelete(backgroundWeighingTaskHandle);
-        backgroundWeighingTaskHandle = NULL;
-    }
+    stopBackgroundWeighingTask();
 
     tft.fillScreen(BACKGROUND_COLOR);
 
@@ -261,14 +245,7 @@ void Scale::loadBag(String name)
     ui.menu->selectMenu(LOADING_BAG_CONFIRM);
 
     bagName = name;
-
-    xTaskCreate(
-        backgroundWeighingTask,
-        "BackgroundWeighing",
-        4096,
-        this,
-        4,
-        &backgroundWeighingTaskHandle);
+    startBackgroundWeighingTask();
 
     while (true)
     {
@@ -306,7 +283,7 @@ float Scale::readWeight(int samples)
     {
         float reading = scale.get_units(samples);
 
-        if (hasBag)
+        if (hasBag && !baristaMode)
         {
             reading -= TERMINAL_COFFEE_BAG_EMPTY_WEIGHT;
         }
@@ -319,7 +296,10 @@ float Scale::readWeight(int samples)
 
 void Scale::tare()
 {
+    stopBackgroundWeighingTask();
+    delay(1000);
     scale.tare();
+    startBackgroundWeighingTask();
 }
 
 bool Scale::isCalibrated()
@@ -396,6 +376,150 @@ void Scale::backgroundWeighingTask(void *parameter)
             }
         }
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(scale->backgroundWeighingDelay / portTICK_PERIOD_MS);
     }
+}
+
+void Scale::startBackgroundWeighingTask()
+{
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        return;
+    }
+
+    xTaskCreate(
+        backgroundWeighingTask,
+        "BackgroundWeighing",
+        4096,
+        this,
+        4,
+        &backgroundWeighingTaskHandle);
+}
+
+void Scale::stopBackgroundWeighingTask()
+{
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskDelete(backgroundWeighingTaskHandle);
+        backgroundWeighingTaskHandle = NULL;
+    }
+}
+
+// Enter Barista mode: single shot by default
+void Scale::enterBaristaMode()
+{
+    tft.fillScreen(BACKGROUND_COLOR);
+    baristaMode = true;
+    ui.menu->selectMenu(BARISTA_SINGLE);
+    ui.taint();
+    backgroundWeighingDelay = 100;
+    tare();
+}
+
+// Exit Barista mode: return to main menu
+void Scale::leaveBaristaMode()
+{
+    scale.set_offset(preferences.getScaleZeroOffset());
+    backgroundWeighingDelay = 1000;
+    baristaMode = false;
+    baristaLastProgress = -99;
+    baristaLastDrawnReading = -99.0f;
+    ui.menu->selectMenu(MAIN_MENU);
+    ledStrip.turnOff();
+    ui.taint();
+}
+
+// Draw Barista mode UI with progress towards target shot weight
+void Scale::drawBaristaMode()
+{
+    // get current weight reading
+    float weight = lastReading;
+    weight = abs(round(weight * 10.0f) / 10.0f);
+
+    if (weight == baristaLastDrawnReading)
+    {
+        return;
+    }
+    baristaLastDrawnReading = weight;
+
+    // determine target based on mode
+    float target = (ui.menu->current == BARISTA_SINGLE) ? 12.0f : 21.0f;
+
+    // calculate progress 0.0 to 1.0
+    float progress = weight / target;
+    float constraintedProgress = constrain(progress, 0.0f, 1.0f);
+
+    auto textColor = TEXT_COLOR;
+
+    if (progress > 0.9f && progress < 1.1f)
+    {
+        textColor = TEXT_COLOR_GREEN;
+        ledStrip.setColor(RgbColor(0, 32, 0));
+    }
+    else if (progress > 1.0f)
+    {
+        textColor = TEXT_COLOR_RED;
+        ledStrip.setColor(RgbColor(32, 0, 0));
+    }
+    else
+    {
+        ledStrip.progress(constraintedProgress, RgbColor(255 / 5, 94 / 5, 0));
+    }
+
+    progress = constraintedProgress;
+
+    const uint16_t progressX = 20;
+    const uint16_t progressHeight = 100;
+    const uint16_t progressY = tft.height() - progressHeight - 20;
+    const uint16_t progressWidth = 60;
+    int progressBarFill = constrain((int)(progress * progressHeight), 0, progressHeight);
+
+    // clear text area
+    tft.fillRect(progressX + progressWidth + 10, progressY,
+                 tft.width(), progressHeight, BACKGROUND_COLOR);
+
+    // show mode label
+    tft.setTextSize(1);
+    tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
+    tft.setCursor(progressX + progressWidth + 10, progressY + GeistMono_VariableFont_wght12pt7b.yAdvance);
+    tft.setTextColor(TEXT_COLOR);
+    tft.print((ui.menu->current == BARISTA_SINGLE) ? "Single" : "Double");
+
+    // show weight vs target
+    tft.setFreeFont(&GeistMono_VariableFont_wght16pt7b);
+
+    // get maximum width for a single reading
+    auto readingWidth = tft.textWidth("00.0 g");
+    auto xOffset = progressX + progressWidth;
+
+    tft.setTextColor(textColor);
+    tft.setCursor(xOffset, progressY + progressHeight - 8);
+    tft.print(String(weight, 1) + " g");
+
+    xOffset += readingWidth;
+    tft.setCursor(xOffset, progressY + progressHeight - 8);
+    tft.print("/");
+
+    tft.print((ui.menu->current == BARISTA_SINGLE) ? "12.0 g" : "21.0 g");
+
+    if (progressBarFill == baristaLastProgress)
+    {
+        return;
+    }
+    baristaLastProgress = progressBarFill;
+
+    // draw progress bar
+    tft.fillRect(progressX, progressY, progressWidth, progressHeight, BACKGROUND_COLOR);
+    tft.drawRect(progressX, progressY, progressWidth, progressHeight, BAG_COLOR);
+    tft.fillRect(progressX + 4,
+                 progressY + 4 + progressHeight - progressBarFill,
+                 progressWidth - 8,
+                 progressBarFill - 8,
+                 textColor);
+}
+
+void Scale::forceBaristaRedraw()
+{
+    baristaLastProgress = -99;
+    baristaLastDrawnReading = -99.0f;
 }

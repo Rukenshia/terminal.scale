@@ -32,7 +32,7 @@ LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
 UI ui = UI(tft, ledStrip, terminalApi, preferences);
-Scale scaleManager(scale, tft, ui, preferences, terminalApi, PIN_DT, PIN_SCK);
+Scale scaleManager(scale, tft, ui, preferences, terminalApi, ledStrip, PIN_DT, PIN_SCK);
 
 void listFiles(const char *dirname);
 

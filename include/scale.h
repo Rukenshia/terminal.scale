@@ -8,12 +8,16 @@
 class UI;
 #include "preferences_manager.h"
 #include "terminal_api.h"
+#include "led.h"
 
 #define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 16.0f
 #define TERMINAL_COFFEE_WEIGHT 340.0f // 12oz
 #define TERMINAL_COFFEE_BAG_WEIGHT TERMINAL_COFFEE_WEIGHT + TERMINAL_COFFEE_BAG_EMPTY_WEIGHT
 #define REORDER_BUTTON_THRESHOLD 150.0f
 #define REORDER_BUTTON_PROMPT_THRESHOLD 80.0f
+
+#define TEXT_COLOR_RED 0xD165
+#define TEXT_COLOR_GREEN 0x6E24
 
 class Scale
 {
@@ -23,6 +27,7 @@ private:
     UI &ui;
     PreferencesManager &preferences;
     TerminalApi &terminalApi;
+    LedStrip &ledStrip;
 
     // Pin configuration
     const int PIN_DT;
@@ -38,15 +43,21 @@ private:
     // Weight measured before confirming load bag
     float weightBeforeLoadBag = 0.0f;
 
+    float baristaLastDrawnReading = -99.0f;
+    int baristaLastProgress = -99;
+    bool baristaMode = false;
+
     TaskHandle_t backgroundWeighingTaskHandle = NULL;
 
 public:
-    Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, int dt_pin, int sck_pin);
+    Scale(HX711 &scaleModule, TFT_eSPI &display, UI &uiSystem, PreferencesManager &prefs, TerminalApi &terminalApi, LedStrip &ledStrip, int dt_pin, int sck_pin);
 
     bool hasBag = false;
     bool loadingBag = false;
     String bagName = "Unknown";
     float lastReading = 0.0f;
+
+    int backgroundWeighingDelay = 1000;
 
     bool bagRemovedFromSurface = false;
     unsigned long bagRemovedTime = 0;
@@ -85,7 +96,16 @@ public:
     void loadBag(String name);
     void confirmLoadBag();
 
+    // Enter and leave Barista mode
+    void enterBaristaMode();
+    void leaveBaristaMode();
+    // Draw UI for Barista mode
+    void drawBaristaMode();
+    void forceBaristaRedraw();
+
     static void backgroundWeighingTask(void *parameter);
+    void stopBackgroundWeighingTask();
+    void startBackgroundWeighingTask();
 };
 
 #endif

@@ -411,6 +411,13 @@ void UI::loop()
         return;
     }
 
+    // Barista mode: bypass bag-removed and display barista UI
+    if (menu->current == BARISTA_SINGLE || menu->current == BARISTA_DOUBLE)
+    {
+        scaleManager->drawBaristaMode();
+        return;
+    }
+
     if (!scaleManager->bagRemovedFromSurface)
     {
         if (scaleManager->bagIsBelowThreshold)
@@ -579,6 +586,13 @@ void UI::loop()
         tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
                      tft.width(), tft.height(), BACKGROUND_COLOR);
         stopBlinking();
+    }
+
+    // Barista mode drawing
+    if (menu->current == BARISTA_SINGLE || menu->current == BARISTA_DOUBLE)
+    {
+        scaleManager->drawBaristaMode();
+        return;
     }
 
     drawWeight(scaleManager->lastReading);

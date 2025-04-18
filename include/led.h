@@ -30,6 +30,15 @@ public:
     void reverseProgress(float percentage, RgbColor color = RgbColor(255, 94, 0));
     void scrollIndicator(uint index, uint size, RgbColor color = RgbColor(255, 94, 0));
 
+    void setColor(RgbColor color)
+    {
+        for (int i = 0; i < NUM_LEDS; i++)
+        {
+            strip.SetPixelColor(i, color);
+        }
+        strip.Show();
+    }
+
     void turnOnAnimation();
     void turnOffAnimation();
 

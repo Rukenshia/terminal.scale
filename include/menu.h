@@ -20,6 +20,8 @@ enum MenuType
     MAIN_MENU_REORDER,
     MAIN_MENU_PROMPT_REORDER,
     MAIN_MENU_PROMPT_REORDER_AUTO,
+    BARISTA_SINGLE, // new barista mode single shot
+    BARISTA_DOUBLE, // new barista mode double shot
     SELECT_BAG,
     LOADING_BAG_CONFIRM,
     STORE,
@@ -66,6 +68,7 @@ private:
     void handlePressStore(int buttonPin);
     void handlePressStoreOrders(int buttonPin);
     void handlePressStoreBrowse(int buttonPin);
+    void handlePressBarista(int buttonPin); // handle barista mode presses
 
 public:
     static const uint16_t menuClearance = 80;
