@@ -133,7 +133,7 @@ If you want to save on some cost, the LED strip is the least useful thing in thi
 1. Solder wires to the top menu buttons and hot glue them in place
 1. Screw the load cell into the case of the scale through the bottom hole using an M5 screw (make sure the load cell is oriented correctly!)
 
-   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_loadcell.jpg" width="50%">
+   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_loadcell.jpg" height="300px">
 
 1. Connect all the wires as shown in the schematic (no promises that I didn't mess it up)
 
