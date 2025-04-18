@@ -95,7 +95,7 @@ I used the following 3D printer materials:
 
 ## 3D Model
 
-![3D Model](docs/model.jpeg)
+![3D Model](docs/model.jpg)
 
 The 3D model is available on [MakerWorld](!TODO). It was modeled with onshape and the source file is available [here](https://cad.onshape.com/documents/3b384bc84e744622a2db15e2/w/2cd6301093df21519d2cb877/e/4a26cedb8ca3c7d20522d794?renderMode=0&uiState=68025464e3edd00b6c11fb3d).
 
