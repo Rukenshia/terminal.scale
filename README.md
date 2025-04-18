@@ -11,7 +11,7 @@ This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy
 ## Meet the scale
 
 > [!NOTE]
-> Why not `cron`? Good question. I don't know. You could use cron instead, but what if you need coffee at different intervals and your consumption changes? This is a more flexible solution. Also, I have trust issues.
+> Why not `cron`? Good question. I don't know. You could use cron instead, but then I wouldn't have an entry for this contest. To be honest, I don't like subscriptions that much. I'd much rather order on demand - and this scale tells me when I do have that demand.
 
 ## Features
 
