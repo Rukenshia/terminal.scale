@@ -102,6 +102,8 @@ The 3D model is available on [MakerWorld](!TODO). It was modeled with onshape an
 The most important part of this project is the load cell. They are surprisingly cheap and accurate once calibrated. For this project, a 1kg load cell made the most sense since I don't expect bags heaver than 1kg to be put on the scale (also more or less enforced by the size of the scale and the brim around the weighing area). The load cell is connected to the ESP32 via an HX711 amplifier.
 The scale is configured to always refer back to its zero offset rather than taring on startup because it is expected to be (re)started with a bag placed on it. This way, the scale will always show the weight of whatever is on it.
 
+For better scale accuracy, it would also be beneficial to have a weighing surface that is not 3d printed (or uses a stronger material) because the 3D printed surface does not have much strength, causing bending and different readings depending on the weight distribution.
+
 The contents of the bag are guesstimated: I weighed an empty bag and the scale will remove this weight from readings. You might need to adjust this based on the bag you are using - in Germany we only have `flow` available as of right now, so I am not sure if other products have different weights.
 
 If you want to save on some cost, the LED strip is the least useful thing in this project. It provides additional visual feedback (when scrolling through menus, being notified of an empty bag, etc.) but not having it won't hurt you.
