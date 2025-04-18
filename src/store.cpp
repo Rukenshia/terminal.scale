@@ -47,7 +47,7 @@ void Store::loadOrders()
     }
 
     tft.fillScreen(BACKGROUND_COLOR);
-    auto bounds = ui.typeText("Loading orders...", smallTitleText);
+    auto bounds = ui.typeTitle("Loading orders");
     ui.startBlinking();
 
 #ifdef NO_WIFI
@@ -57,6 +57,7 @@ void Store::loadOrders()
     };
 #else
     orders = terminalApi.getOrders();
+    Serial.printf("Loaded %d orders\n", orders.size());
 #endif
     ordersLoaded = true;
 
@@ -65,7 +66,7 @@ void Store::loadOrders()
 
     if (orders.empty())
     {
-        ui.typeText("No orders found", smallTitleText);
+        ui.typeTitle("No orders found");
         delay(2000);
 
         ui.menu->selectMenu(STORE);
@@ -81,6 +82,11 @@ void Store::drawOrders()
     if (!ordersLoaded)
     {
         loadOrders();
+
+        if (orders.empty())
+        {
+            return;
+        }
         recalcMenuButtons(orderIndex, orders.size());
     }
 
@@ -88,19 +94,44 @@ void Store::drawOrders()
 
     const uint16_t startY = Menu::menuClearance + 60;
 
-    tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
-
     tft.setTextColor(ACCENT_COLOR);
     tft.setCursor(20, startY);
 
     auto &order = orders[orderIndex];
+    ui.setIdealFont(order.id.c_str(), 30);
+
     tft.print(order.id.c_str());
 
-    String subheader = order.created.substring(10) + " - " + order.tracking.status;
-    tft.setCursor(20, startY + tft.fontHeight() + 4);
-    tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
+    String status = "UNKNOWN";
+    if (!order.tracking.status.isEmpty())
+    {
+        status = order.tracking.status;
+    }
+
+    tft.setCursor(20, startY + 40);
+
+    String subheaderText = order.created.substring(0, 10) + " - " + status;
+    ui.setIdealFont(subheaderText.c_str(), 30);
     tft.setTextColor(TEXT_COLOR);
-    tft.print(subheader.c_str());
+    tft.print(order.created.substring(0, 10).c_str());
+    tft.print(" - ");
+
+    if (status == "DELIVERED")
+    {
+        tft.setTextColor(0x05C8);
+    }
+    else if (status == "UNKNOWN")
+    {
+        tft.setTextColor(0xD9A7);
+    }
+    else
+    {
+        tft.setTextColor(0x44FC);
+    }
+
+    tft.print(status.c_str());
+
+    ui.drawProgressIndicator(orderIndex, orders.size());
 }
 
 void Store::recalcMenuButtons(int index, int size)
@@ -132,14 +163,9 @@ void Store::recalcMenuButtons(int index, int size)
     if (shouldRedraw)
     {
         ui.menu->redraw();
-        float progress = (float)index / (size - 1);
-        if (progress < 0.1)
-        {
-            progress = 0.1;
-        }
-
-        ledStrip.progress(progress, RgbColor(255 / 4, 94 / 4, 0));
     }
+
+    ledStrip.scrollIndicator(index, size);
 }
 
 void Store::nextOrder()
@@ -148,6 +174,7 @@ void Store::nextOrder()
     if (orderIndex >= orders.size())
     {
         orderIndex--;
+        return;
     }
 
     recalcMenuButtons(orderIndex, orders.size());
@@ -171,6 +198,11 @@ void Store::drawProducts()
     if (!productsLoaded)
     {
         loadProducts();
+
+        if (products.empty())
+        {
+            return;
+        }
         recalcMenuButtons(productIndex, products.size());
     }
 
@@ -200,16 +232,18 @@ void Store::drawProducts()
     y += 40;
     tft.setCursor(20, y);
 
-    String subheader = product.variants[0].name + " - $" + (product.variants[0].price / 10);
+    String subheader = product.variants[0].name + " - $" + String(product.variants[0].price / 100.0f, 2);
     ui.setIdealFont(subheader.c_str(), nonTitleFonts);
     tft.setTextColor(TEXT_COLOR);
     tft.print(subheader.c_str());
+
+    ui.drawProgressIndicator(productIndex, products.size());
 }
 
 void Store::loadProducts()
 {
     tft.fillScreen(BACKGROUND_COLOR);
-    auto bounds = ui.typeText("Loading products...", smallTitleText);
+    auto bounds = ui.typeTitle("Loading products");
     ui.startBlinking();
 
 #ifdef NO_WIFI
@@ -227,7 +261,7 @@ void Store::loadProducts()
 
     if (products.empty())
     {
-        ui.typeText("No products found", smallTitleText);
+        ui.typeTitle("No products found");
         delay(2000);
 
         ui.menu->selectMenu(STORE);
@@ -321,7 +355,7 @@ void Store::buyProduct()
     }
 
     tft.fillScreen(BACKGROUND_COLOR);
-    auto bounds = ui.typeText("Clearing cart...", titleText);
+    auto bounds = ui.typeTitle("Clearing cart...");
     if (terminalApi.clearCart())
     {
         Serial.println("Cart cleared");
@@ -332,7 +366,7 @@ void Store::buyProduct()
     }
 
     ui.wipeText(bounds);
-    bounds = ui.typeText("Adding to cart...");
+    bounds = ui.typeTitle("Adding to cart...");
     Cart *cart = terminalApi.addItemToCart(products[productIndex].variants[0].id.c_str(), 1);
     if (!cart)
     {
@@ -340,12 +374,13 @@ void Store::buyProduct()
         ui.menu->taint();
         return;
     }
+    ui.wipeText(bounds);
 
-    bounds = ui.typeText(String("Subtotal: $" + String(cart->subtotal / 10)).c_str(), titleText);
+    bounds = ui.typeTitle(String("Subtotal: $" + String(cart->subtotal / 10)).c_str());
     delay(3000);
     ui.wipeText(bounds);
 
-    bounds = ui.typeText("Placing order...", titleText);
+    bounds = ui.typeTitle("Placing order...");
     Order *order = terminalApi.convertCartToOrder();
     if (!order)
     {
@@ -355,86 +390,43 @@ void Store::buyProduct()
     }
 
     ui.wipeText(bounds);
-    ui.typeText("Order placed", accentText);
+    ui.typeTitle("Order placed");
+    ledStrip.purchaseAnimation();
     delay(5000);
     ui.wipeText(bounds);
 
+    ledStrip.turnOff();
     taint();
     ui.menu->selectMenu(MAIN_MENU);
 }
 
-// void order()
-// {
-//   Serial.println("Fetching products...");
-//   std::vector<Product> products = terminalApi.getProducts();
-//   Serial.printf("Found %d products\n", products.size());
+void Store::openToReorder(String bagName)
+{
+    tft.fillScreen(BACKGROUND_COLOR);
 
-//   auto bounds = ui.typeText("Product: ");
-//   delay(1000);
-//   ui.wipeText(bounds);
+    loadProducts();
+    if (products.empty())
+    {
+        Serial.println("No products found");
+        return;
+    }
 
-//   ui.typeText(products[0].name.c_str(), accentText);
-//   delay(5000);
-//   ui.wipeText(bounds);
+    ui.menu->selectMenu(STORE_BROWSE);
 
-//   bounds = ui.typeText("Clearing cart...", titleText);
-//   if (terminalApi.clearCart())
-//   {
-//     Serial.println("Cart cleared");
-//   }
-//   else
-//   {
-//     Serial.println("Failed to clear cart");
-//   }
-//   ui.wipeText(bounds);
+    // set index
+    productIndex = std::find_if(products.begin(), products.end(),
+                                [&bagName](const Product &product)
+                                {
+                                    return product.name == bagName;
+                                }) -
+                   products.begin();
+    Serial.printf("Product index: %d\n", productIndex);
+    if (productIndex >= products.size())
+    {
+        productIndex = 0;
+    }
 
-//   bounds = ui.typeText("Adding to cart...");
-//   Cart *cart = terminalApi.addItemToCart(products[0].variants[0].id.c_str(), 1);
-//   if (cart)
-//   {
-//     Serial.println("Item added to cart");
-//     Serial.printf("Subtotal: %d\n", cart->subtotal);
-//     Serial.printf("Address ID: %s\n", cart->addressID.c_str());
-//     Serial.printf("Card ID: %s\n", cart->cardID.c_str());
-
-//     ui.wipeText(bounds);
-
-//     bounds = ui.typeText("Cart subtotal: ");
-
-//     TextConfig subtotalConfig = ui.createTextConfig(MAIN_FONT);
-//     subtotalConfig.y = bounds.y + bounds.height + 8;
-//     subtotalConfig.enableCursor = false;
-//     auto bounds2 = ui.typeText(String(cart->subtotal).c_str(), subtotalConfig);
-//     ui.wipeText(bounds2);
-//     ui.wipeText(bounds);
-
-//     delay(5000);
-//   }
-//   else
-//   {
-//     Serial.println("Failed to add item to cart");
-//   }
-//   ui.wipeText(bounds);
-
-//   bounds = ui.typeText("Placing order...");
-//   Order *order = terminalApi.convertCartToOrder();
-//   if (order)
-//   {
-//     Serial.println("Order placed");
-//     Serial.printf("Order ID: %s\n", order->id.c_str());
-//     Serial.printf("Shipping address ID: %s\n", order->shipping.id.c_str());
-//     Serial.printf("Tracking number: %s\n", order->tracking.number.c_str());
-//     Serial.printf("Tracking URL: %s\n", order->tracking.url.c_str());
-
-//     ui.wipeText(bounds);
-
-//     ui.typeText("Order placed", accentText);
-
-//     delay(5000);
-//   }
-//   else
-//   {
-//     Serial.println("Failed to place order");
-//   }
-//   ui.wipeText(bounds);
-// }
+    Serial.printf("Product name: %s\n", products[productIndex].name.c_str());
+    recalcMenuButtons(productIndex, products.size());
+    taint();
+}

@@ -55,8 +55,8 @@ void IRAM_ATTR Menu::handleButtonPress(void *arg)
 }
 
 // Constructor
-Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoader)
-    : tft(tftDisplay), ui(uiInstance), imageLoader(imageLoader)
+Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoader, LedStrip &ledStrip)
+    : tft(tftDisplay), ui(uiInstance), imageLoader(imageLoader), ledStrip(ledStrip)
 {
 
     // Initialize menu type
@@ -120,8 +120,11 @@ void Menu::handlePress(int buttonPin)
     switch (current)
     {
     case MAIN_MENU:
+    case MAIN_MENU_REORDER:
         handlePressMainMenu(buttonPin);
         break;
+    case MAIN_MENU_PROMPT_REORDER:
+        handlePressMainMenuPromptReorder(buttonPin);
     case SELECT_BAG:
         handlePressSelectBag(buttonPin);
         break;
@@ -165,6 +168,12 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
     // Set the current menu type
     current = menuType;
 
+    // Clear button data back to default
+    for (int i = 0; i < 3; i++)
+    {
+        menuItems[i].color = TEXT_COLOR;
+    }
+
     switch (menuType)
     {
     case MAIN_MENU:
@@ -177,6 +186,30 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[2].visible = false;
         // menuItems[2].imagePath = "/dot.png";
         // menuItems[2].text = "Calibrate";
+        break;
+    case MAIN_MENU_REORDER:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot.png";
+        menuItems[0].text = "Load Bag";
+
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot_accent.png";
+        menuItems[2].text = "Reorder";
+        menuItems[2].color = ACCENT_COLOR;
+        break;
+    case MAIN_MENU_PROMPT_REORDER:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot_accent.png";
+        menuItems[0].text = "Yes";
+        menuItems[0].color = ACCENT_COLOR;
+
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot.png";
+        menuItems[2].text = "No";
         break;
     case SELECT_BAG:
         menuItems[0].visible = true;
@@ -261,13 +294,31 @@ void Menu::handlePressMainMenu(int buttonPin)
         scaleManager.startLoadBag();
         break;
     case PIN_TOPRIGHT:
-        // Request calibration instead of directly calling calibrate()
-        // This is safe to call from an interrupt context
-        // scaleManager.requestCalibration();
+        if (current == MAIN_MENU_REORDER)
+        {
+            ui.store->openToReorder(scaleManager.bagName);
+        }
         break;
     case PIN_TERMINAL_BUTTON:
         selectMenu(MenuType::STORE);
         ui.store->taint();
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
+}
+
+void Menu::handlePressMainMenuPromptReorder(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        ui.dismissReorderPrompt();
+        ui.store->openToReorder(scaleManager.bagName);
+        break;
+    case PIN_TOPRIGHT:
+        ui.dismissReorderPrompt();
         break;
     default:
         Serial.println("Unknown Button Pressed");
@@ -340,6 +391,7 @@ void Menu::handlePressStoreOrders(int buttonPin)
         ui.store->previousOrder();
         break;
     case PIN_TOPMIDDLE:
+        ledStrip.turnOff();
         this->selectMenu(STORE);
         ui.store->taint();
         break;
@@ -360,6 +412,7 @@ void Menu::handlePressStoreBrowse(int buttonPin)
         ui.store->previousProduct();
         break;
     case PIN_TOPMIDDLE:
+        ledStrip.turnOff();
         this->selectMenu(STORE);
         ui.store->taint();
         break;
@@ -414,8 +467,6 @@ void Menu::draw()
 
         if (imagePath)
         {
-            Serial.println("Image path is null");
-
             if (!imageLoader.getImageInfo(imagePath, imageWidth, imageHeight))
             {
                 Serial.printf("Image not found: %s\n", imagePath);
@@ -429,7 +480,7 @@ void Menu::draw()
         }
 
         // Draw the text below the icon
-        tft.setTextColor(TEXT_COLOR);
+        tft.setTextColor(menuItems[i].color);
         tft.setTextSize(1);
         tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
 

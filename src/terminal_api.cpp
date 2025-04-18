@@ -123,10 +123,21 @@ std::vector<Order> TerminalApi::getOrders()
             order.amount.shipping = amount["shipping"].as<uint32_t>();
 
             JsonObject tracking = orderObj["tracking"].as<JsonObject>();
-            order.tracking.service = tracking["service"].as<String>();
-            order.tracking.number = tracking["number"].as<String>();
-            order.tracking.status = tracking["status"].as<String>();
-            order.tracking.url = tracking["url"].as<String>();
+            if (tracking["status"].isUnbound() || tracking["number"].isUnbound() || tracking["service"].isUnbound() || tracking["url"].isUnbound())
+            {
+                // Tracking information is not available
+                order.tracking.status = "";
+                order.tracking.number = "";
+                order.tracking.service = "";
+                order.tracking.url = "";
+            }
+            else
+            {
+                order.tracking.service = tracking["service"].as<String>();
+                order.tracking.number = tracking["number"].as<String>();
+                order.tracking.status = tracking["status"].as<String>();
+                order.tracking.url = tracking["url"].as<String>();
+            }
 
             JsonArray items = orderObj["items"].as<JsonArray>();
             for (JsonVariant itemVariant : items)
@@ -136,7 +147,11 @@ std::vector<Order> TerminalApi::getOrders()
 
                 item.id = itemObj["id"].as<String>();
                 item.description = itemObj["description"].as<String>();
+
+                order.items.push_back(item);
             }
+
+            orders.push_back(order);
         }
         return orders;
     }

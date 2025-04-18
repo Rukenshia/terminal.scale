@@ -20,7 +20,7 @@ void BagSelect::draw()
     tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
     tft.setTextColor(PREVIEW_COLOR);
 
-    const uint16_t yPos = Menu::menuClearance - 28;
+    const uint16_t yPos = Menu::menuClearance - 26;
 
     if (selectedBagIndex > 0)
     {
@@ -99,11 +99,5 @@ bool BagSelect::selectPreviousBag()
 
 void BagSelect::drawProgress()
 {
-    float progress = selectedBagIndex / (float)bags.size() - 1;
-    if (progress < 0.1)
-    {
-        progress = 0.1;
-    }
-
-    ledStrip.progress(progress, RgbColor(255 / 4, 94 / 4, 0));
+    ledStrip.scrollIndicator(selectedBagIndex, bags.size());
 }

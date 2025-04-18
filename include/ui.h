@@ -18,14 +18,19 @@ class Scale;
 #include "GeistMonoVariableFont_wght12.h"
 #include "GeistMonoVariableFont_wght10.h"
 
-#define ACCENT_COLOR 0x02ff
+#define ACCENT_COLOR 0xFB00
 #define PRIMARY_COLOR TFT_WHITE
 #define BACKGROUND_COLOR TFT_BLACK
 #define TEXT_COLOR 0xBDD8
+#define MUTED_TEXT_COLOR 0x736C
 #define BAG_COLOR 0x736C
 
 #define MAIN_FONT &GeistMono_VariableFont_wght10pt7b
 
+const std::vector<const GFXfont *> titleFonts = {
+    &GeistMono_VariableFont_wght18pt7b,
+    &GeistMono_VariableFont_wght16pt7b,
+    &GeistMono_VariableFont_wght14pt7b};
 const std::vector<const GFXfont *> nonTitleFonts = {
     &GeistMono_VariableFont_wght12pt7b,
     &GeistMono_VariableFont_wght10pt7b};
@@ -115,6 +120,7 @@ public:
 
     // Typing animation that displays text letter by letter using configuration
     TextBounds typeText(const char *text, const TextConfig &config = defaultText);
+    TextBounds typeTitle(const char *text, const TextConfig &config = titleText);
     TextBounds typeBoundedText(const char *text, TextConfig config = defaultText, std::vector<const GFXfont *> fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
     const GFXfont *getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b});
     // Get ideal font that doesn't clip the tft, returns width
@@ -134,9 +140,16 @@ public:
 
     void drawMenu();
 
+    void drawReorderPrompt();
+    void dismissReorderPrompt();
+
+    void drawProgressIndicator(uint index, uint size);
+
     void drawWeight(float weight);
 
     void loop();
+
+    bool reorderPromptDismissed = false;
 
 private:
     TFT_eSPI &tft;

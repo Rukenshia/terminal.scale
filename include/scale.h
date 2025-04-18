@@ -12,6 +12,8 @@ class UI;
 #define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 16.0f
 #define TERMINAL_COFFEE_WEIGHT 340.0f // 12oz
 #define TERMINAL_COFFEE_BAG_WEIGHT TERMINAL_COFFEE_WEIGHT + TERMINAL_COFFEE_BAG_EMPTY_WEIGHT
+#define REORDER_BUTTON_THRESHOLD 150.0f
+#define REORDER_BUTTON_PROMPT_THRESHOLD 80.0f
 
 class Scale
 {
@@ -48,6 +50,9 @@ public:
 
     bool bagRemovedFromSurface = false;
     unsigned long bagRemovedTime = 0;
+
+    bool bagIsBelowThreshold = false;
+    bool bagIsBelowPromptThreshold = false;
 
     // Initialize the scale
     void begin();

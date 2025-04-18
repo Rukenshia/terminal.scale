@@ -360,6 +360,27 @@ void Scale::backgroundWeighingTask(void *parameter)
             scale->bagRemovedTime = 0;
         }
 
+        if (scale->hasBag && !scale->bagRemovedFromSurface)
+        {
+            if (reading < REORDER_BUTTON_THRESHOLD)
+            {
+                scale->bagIsBelowThreshold = true;
+            }
+            else
+            {
+                scale->bagIsBelowThreshold = false;
+            }
+
+            if (reading < REORDER_BUTTON_PROMPT_THRESHOLD)
+            {
+                scale->bagIsBelowPromptThreshold = true;
+            }
+            else
+            {
+                scale->bagIsBelowPromptThreshold = false;
+            }
+        }
+
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

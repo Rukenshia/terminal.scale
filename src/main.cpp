@@ -56,6 +56,15 @@ void setup()
   // Initialize LED strip
   ledStrip.begin();
 
+#ifdef LED_SCROLL_INDICATOR_DEBUG
+  for (int i = 0; i < 10; i++)
+  {
+    ledStrip.scrollIndicator(i, 10);
+    delay(1000);
+  }
+  ledStrip.turnOff();
+#endif
+
   // Initialize the UI system
   ui.begin(&scaleManager);
 
@@ -67,6 +76,7 @@ void setup()
 #ifndef NO_WIFI
   wifi.begin(WIFI_SSID, WIFI_PASSWORD);
   wifi.connect();
+  terminalApi.begin(&wifi, TERMINAL_PAT);
 #endif
   ui.wipeText(bounds);
   ui.stopBlinking();

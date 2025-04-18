@@ -27,8 +27,14 @@ public:
     void turnOff();
 
     void progress(float percentage, RgbColor color = RgbColor(255, 94, 0));
+    void scrollIndicator(uint index, uint size, RgbColor color = RgbColor(255, 94, 0));
+
     void turnOnAnimation();
     void turnOffAnimation();
+
+    void purchaseAnimation();
+
+    void reorderAnimation();
 
     static void animationTask(void *parameter);
 };
@@ -40,6 +46,8 @@ struct AnimationData
     RgbColor end;
     AnimEaseFunction easeFunction;
     uint32_t duration;
+    bool reverse = false;
+    bool loop = false;
 };
 
 #endif

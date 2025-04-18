@@ -12,6 +12,12 @@ void LedStrip::begin()
 
 void LedStrip::turnOff()
 {
+    if (animationTaskHandle != NULL)
+    {
+        vTaskDelete(animationTaskHandle);
+        animationTaskHandle = NULL;
+    }
+
     for (int i = 0; i < NUM_LEDS; i++)
     {
         strip.SetPixelColor(i, RgbColor(0, 0, 0));
@@ -28,10 +34,13 @@ void LedStrip::animationTask(void *parameter)
     RgbColor endColor = data->end;
     AnimEaseFunction easeFunction = data->easeFunction;
     uint32_t duration = data->duration;
+    bool reverse = data->reverse;
 
-    NeoPixelAnimator animator(1);
-    animator.StartAnimation(0, duration, [=](const AnimationParam &param)
-                            {
+    auto anim = [=]()
+    {
+        NeoPixelAnimator animator(1);
+        animator.StartAnimation(0, duration, [=](const AnimationParam &param)
+                                {
                                 if (param.state == AnimationState_Completed)
                                 {
                                     return;
@@ -45,12 +54,50 @@ void LedStrip::animationTask(void *parameter)
                                     strip->strip.SetPixelColor(i, color);
                                 } });
 
-    while (animator.IsAnimating())
-    {
-        animator.UpdateAnimations();
-        strip->strip.Show();
+        while (animator.IsAnimating())
+        {
+            animator.UpdateAnimations();
+            strip->strip.Show();
 
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+        }
+
+        if (reverse)
+        {
+            // Reverse the animation
+            animator.StartAnimation(0, duration, [=](const AnimationParam &param)
+                                    {
+                                    if (param.state == AnimationState_Completed)
+                                    {
+                                        return;
+                                    }
+
+                                    float progress = easeFunction(param.progress);
+                                    RgbColor color = RgbColor::LinearBlend(endColor, startColor, progress);
+                                    for (int i = 0; i < NUM_LEDS; i++)
+                                    {
+                                        strip->strip.SetPixelColor(i, color);
+                                    } });
+            while (animator.IsAnimating())
+            {
+                animator.UpdateAnimations();
+                strip->strip.Show();
+
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+        }
+    };
+
+    if (data->loop)
+    {
+        while (true)
+        {
+            anim();
+        }
+    }
+    else
+    {
+        anim();
     }
 
     // Clean up
@@ -80,6 +127,33 @@ void LedStrip::turnOffAnimation()
     data->easeFunction = NeoEase::CubicInOut;
     data->instance = this;
     data->duration = 2000;
+
+    createAnimationTask(data);
+}
+
+void LedStrip::purchaseAnimation()
+{
+    AnimationData *data = new AnimationData;
+    data->start = RgbColor(0, 0, 0);
+    data->end = RgbColor(0, 255, 0);
+    data->easeFunction = NeoEase::CubicInOut;
+    data->instance = this;
+    data->duration = 2000;
+    data->reverse = true;
+
+    createAnimationTask(data);
+}
+
+void LedStrip::reorderAnimation()
+{
+    AnimationData *data = new AnimationData;
+    data->start = RgbColor(0, 0, 0);
+    data->end = RgbColor(255 / 5, 0, 0);
+    data->easeFunction = NeoEase::CubicInOut;
+    data->instance = this;
+    data->duration = 1000;
+    data->reverse = true;
+    data->loop = true;
 
     createAnimationTask(data);
 }
@@ -133,6 +207,37 @@ void LedStrip::progress(float percentage, RgbColor color) // percentage: 0.0 to 
             {
                 strip.SetPixelColor(i, RgbColor(0, 0, 0));
             }
+        }
+        else
+        {
+            strip.SetPixelColor(i, RgbColor(0, 0, 0));
+        }
+    }
+    strip.Show();
+}
+
+void LedStrip::scrollIndicator(uint index, uint size, RgbColor color)
+{
+    // get the LED relative to the start of the strip
+    float percent = (float)index / (size - 1);
+    auto targetLed = (int)((NUM_LEDS - 1) * percent);
+
+    Serial.printf("Scroll indicator: %d/%d (%f) -> %d\n", index, size, percent, targetLed);
+
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        if (i == targetLed)
+        {
+            strip.SetPixelColor(i, color);
+        }
+        else if (i < targetLed)
+        {
+            auto newColor = RgbColor::LinearBlend(
+                color,
+                RgbColor(0, 0, 0),
+                0.9f);
+
+            strip.SetPixelColor(i, newColor);
         }
         else
         {

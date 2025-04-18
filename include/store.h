@@ -39,6 +39,8 @@ public:
     void taint() { tainted = true; };
     void draw();
 
+    void openToReorder(String bagName);
+
     void nextOrder();
     void previousOrder();
 

@@ -59,7 +59,7 @@ UI::UI(TFT_eSPI &tftDisplay, LedStrip &ledStrip, TerminalApi &terminalApi)
       blinkState(NULL),
       terminalApi(terminalApi)
 {
-    this->menu = new Menu(tftDisplay, *this, imageLoader);
+    this->menu = new Menu(tftDisplay, *this, imageLoader, ledStrip);
     this->bagSelect = new BagSelect(tftDisplay, *this, ledStrip);
     this->store = new Store(*this, tftDisplay, *scaleManager, terminalApi, ledStrip);
     memset(&lastCursorState, 0, sizeof(TextBounds));
@@ -170,6 +170,14 @@ TextBounds UI::typeText(const char *text, const TextConfig &config)
     return bounds;
 }
 
+TextBounds UI::typeTitle(const char *text, const TextConfig &config)
+{
+    auto cfg = config;
+    cfg.font = getIdealFont(text, titleFonts);
+
+    return typeText(text, cfg);
+}
+
 const GFXfont *UI::getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts)
 {
     const GFXfont *idealFont = fonts.back(); // default to smallest font
@@ -196,7 +204,6 @@ int16_t UI::setIdealFont(const char *text, uint16_t padding, const std::vector<c
 
     for (const auto &font : fonts)
     {
-        Serial.printf("idealfontloop\n");
         tft.setFreeFont(font);
         int16_t fontTextWidth = tft.textWidth(text);
 
@@ -323,10 +330,7 @@ void UI::stopBlinking()
 {
     if (cursorBlinkTaskHandle != NULL)
     {
-        // Delete the task
-        blinkState->isVisible = true; // in case the task is still running
         vTaskDelete(cursorBlinkTaskHandle);
-        cursorBlinkTaskHandle = NULL;
 
         // Clear the cursor if it's currently visible
         if (blinkState != NULL)
@@ -341,6 +345,8 @@ void UI::stopBlinking()
             delete blinkState;
             blinkState = NULL;
         }
+
+        cursorBlinkTaskHandle = NULL;
     }
 }
 
@@ -356,18 +362,70 @@ void UI::drawMenu()
 
 void UI::loop()
 {
-    drawMenu();
 
     if (menu->current == STORE ||
         menu->current == STORE_ORDERS ||
         menu->current == STORE_BROWSE)
     {
+        drawMenu();
         store->draw();
         return;
     }
 
+    if (!scaleManager->bagRemovedFromSurface)
+    {
+        if (scaleManager->bagIsBelowThreshold)
+        {
+            if (menu->current == MAIN_MENU)
+            {
+                menu->selectMenu(MAIN_MENU_REORDER, false);
+                menu->taint();
+            }
+        }
+        else
+        {
+            if (menu->current == MAIN_MENU_REORDER)
+            {
+                menu->selectMenu(MAIN_MENU, false);
+                menu->taint();
+            }
+        }
+
+        if (scaleManager->bagIsBelowPromptThreshold)
+        {
+            if (!reorderPromptDismissed)
+            {
+                if (menu->current != MAIN_MENU_PROMPT_REORDER)
+                {
+                    ledStrip.reorderAnimation();
+                    menu->selectMenu(MAIN_MENU_PROMPT_REORDER, false);
+                    menu->taint();
+                    drawMenu();
+                    drawReorderPrompt();
+                    return;
+                }
+
+                return;
+            }
+        }
+        else
+        {
+            if (menu->current == MAIN_MENU_PROMPT_REORDER)
+            {
+                menu->selectMenu(MAIN_MENU, false);
+                menu->taint();
+                ledStrip.turnOff();
+            }
+            reorderPromptDismissed = false;
+        }
+    }
+
     if (scaleManager->loadingBag)
     {
+        if (reorderPromptDismissed)
+        {
+            reorderPromptDismissed = false;
+        }
         bagSelect->draw();
         return;
     }
@@ -416,7 +474,7 @@ void UI::drawWeight(float weight)
     {
         return;
     }
-    Serial.printf("draw weight %f vs old reading %f\n", weight, lastDrawnReading);
+
     lastDrawnReading = weight;
 
     float progress = max(min(weight / TERMINAL_COFFEE_WEIGHT, 1.0f), 0.0f);
@@ -452,10 +510,41 @@ void UI::drawWeight(float weight)
 
     tft.fillRect(progressX, progressY, progressWidth, progressHeight, BACKGROUND_COLOR);
     tft.drawRect(progressX, progressY, progressWidth, progressHeight, BAG_COLOR);
-    tft.fillRect(progressX + 2, progressY + 2 + progressHeight - progressBarFill, progressWidth - 4, progressBarFill - 4, ACCENT_COLOR);
+    tft.fillRect(progressX + 4, progressY + 4 + progressHeight - progressBarFill, progressWidth - 8, progressBarFill - 8, ACCENT_COLOR);
 
     for (int i = 1; i - 1 < progressBarFill / 20; i++)
     {
         tft.drawFastHLine(progressX + 2, progressY + 2 + progressHeight - i * 20, progressWidth - 4, BACKGROUND_COLOR);
     }
+}
+
+void UI::drawProgressIndicator(uint index, uint size)
+{
+    tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+    const uint16_t y = tft.height() - 4;
+
+    String text = String(index + 1) + "/" + String(size);
+    const uint16_t x = tft.width() / 2 - tft.textWidth(text.c_str()) / 2;
+
+    tft.setCursor(x, y);
+    tft.setTextColor(MUTED_TEXT_COLOR);
+    tft.print(text.c_str());
+}
+
+void UI::drawReorderPrompt()
+{
+    tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
+
+    auto bounds = typeTitle("Reorder bag?");
+    startBlinkingAt(bounds);
+}
+
+void UI::dismissReorderPrompt()
+{
+    reorderPromptDismissed = true;
+    tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
+    lastDrawnReading = 0;
+    stopBlinking();
+    ledStrip.turnOff();
+    menu->selectMenu(MAIN_MENU, false);
 }

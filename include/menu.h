@@ -6,6 +6,7 @@
 
 #include "image_loader.h"
 #include "ui.h"
+#include "led.h"
 
 // Forward declarations
 class UI;
@@ -14,6 +15,8 @@ class Menu;
 enum MenuType
 {
     MAIN_MENU,
+    MAIN_MENU_REORDER,
+    MAIN_MENU_PROMPT_REORDER,
     SELECT_BAG,
     LOADING_BAG_CONFIRM,
     STORE,
@@ -33,6 +36,7 @@ struct MenuItem
     bool visible;
     String text;
     const char *imagePath;
+    uint16_t color;
 };
 
 class Menu
@@ -41,16 +45,18 @@ private:
     TFT_eSPI &tft;
     UI &ui;
     ImageLoader &imageLoader;
+    LedStrip &ledStrip;
 
     bool tainted = false;
 
     MenuItem menuItems[3] = {
-        {true, "TL", "/up.png"},
-        {true, "TM", "/dot.png"},
-        {true, "TR", "/down.png"},
+        {true, "TL", "/up.png", 0xBDD8},
+        {true, "TM", "/dot.png", 0xBDD8},
+        {true, "TR", "/down.png", 0xBDD8},
     };
 
     void handlePressMainMenu(int buttonPin);
+    void handlePressMainMenuPromptReorder(int buttonPin);
     void handlePressLoadingBagConfirm(int buttonPin);
     void handlePressSelectBag(int buttonPin);
     void handlePressStore(int buttonPin);
@@ -60,7 +66,7 @@ private:
 public:
     static const uint16_t menuClearance = 80;
 
-    Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance);
+    Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance, LedStrip &ledStrip);
     MenuType current;
 
     void begin();

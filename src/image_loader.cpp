@@ -221,7 +221,7 @@ void ImageLoader::drawPNGLine(PNGDRAW *pDraw)
     uint8_t maskBuffer[1 + MAX_IMAGE_WIDTH / 8];
 
     // Get a line of pixels from the PNG decoder
-    png.getLineAsRGB565(pDraw, lineBuffer, PNG_RGB565_LITTLE_ENDIAN, 0xffffffff);
+    png.getLineAsRGB565(pDraw, lineBuffer, PNG_RGB565_BIG_ENDIAN, 0xffffffff);
 
     if (png.getAlphaMask(pDraw, maskBuffer, 255))
     {
