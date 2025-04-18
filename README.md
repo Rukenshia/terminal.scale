@@ -4,14 +4,15 @@
 > This project is not affiliated with terminal.shop. It's an entry for their API contest.
 
 Don't you miss the good old days of [Amazon Dash](https://en.wikipedia.org/wiki/Amazon_Dash)? What if we could bring it back, but like... better?
-This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy, single dosing, people who want someone else to tell them when to buy new coffee.
+This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy, single dosing, people who want someone else to tell them when to buy new coffee - or even let the scale do it for them.
+While it can be used to weigh anything, the scale is connected to the [terminal.shop](https://terminal.shop) API to keep your life simple. Go and focus on the important things in life, like drinking coffee, and let the scale do the rest.
 
-✝︎: the scale does not use AI in any way, shape, or form. Some code was vibed by it, but sadly all we really need is a load cell. It's a scale.
+✝︎: that's a lie. All you need is a load cell, seriously. But anything with AI in its name is better, right?
 
 ## Meet the scale
 
 > [!NOTE]
-> Why not `cron`? Good question. I don't know. You could use cron instead, but then I wouldn't have an entry for this contest. To be honest, I don't like subscriptions that much. I'd much rather order on demand - and this scale tells me when I do have that demand.
+> Why not `cron`? Good question. Trust issues. Why trust terminal to send me coffee on a schedule when I can have trust issues with my own code?
 
 ## Features
 
@@ -125,13 +126,25 @@ If you want to save on some cost, the LED strip is the least useful thing in thi
 1. Install four rubber feet on the bottom of the scale
 1. Place the LED Strip through the whole on the bottom of the scale - the connecting cables need to face through the hole
 1. Solder wires to the button for the terminal button and hot glue it in place
-1. Solder wires to the top menu buttons and hot glue them in place
 1. Fit the display into the case and tape it in place (can be hot glued later once you are sure everything works)
+
+   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_terminalbtn.jpg" width="50%">
+
+1. Solder wires to the top menu buttons and hot glue them in place
 1. Screw the load cell into the case of the scale through the bottom hole using an M5 screw (make sure the load cell is oriented correctly!)
+
+   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_loadcell.jpg" width="50%">
+
 1. Connect all the wires as shown in the schematic (no promises that I didn't mess it up)
+
+   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_allparts.jpg" width="50%">
+
 1. Install the USB C connector and connect it to the ESP32
    - If you are using a 2-wire connector, connect a data-capable USB cable to the ESP32 until you have calibrated the scale
-1. Tape loose wires to the bottom of the scale so that they do not push up on the weighing surface
+1. Tape loose wires to the bottom of the scale so that they do not push up on the weighing surface (doesn't need to be pretty or perfect, as evidenced by the following picture)
+
+   <img alt="assembly before the display was installed" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/assembly_allin.jpg" width="50%">
+
 1. Install the weighing surface and fix it in place with the M4 screws
    - Make sure that the weighing surface is not touching the walls or anything else is pushing on it
 1. Install the terminal button and top menu button caps by squeezing it on the PCB button (you might need to re-print with a different scale or glue it in place)
@@ -163,3 +176,7 @@ To compile the code, you will need to use [`PlatformIO`](https://platformio.org/
 ### Calibration
 
 On first startup, you will be automatically put into calibration mode. Attach a Serial listener to the USB port and follow the instructions. Please note that the calibration weight needs to be input as _milligrams_ instead of grams. Once calibrated, you will no longer need any connection to the ESP32.
+
+#### Re-calibration
+
+If you need to re-calibrate the scale, connect an USB cable to the ESP32. Make sure `SERIAL_LISTEN` is enabled in [`include/debug.h`](include/debug.h) and connect to the controller with a serial monitor. Once the scale has restarted, send `calibrate` to the scale via the serial monitor. The scale will then enter calibration mode and you can follow the instructions on the screen.

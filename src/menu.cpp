@@ -58,9 +58,6 @@ void IRAM_ATTR Menu::handleButtonPress(void *arg)
 Menu::Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoader, LedStrip &ledStrip)
     : tft(tftDisplay), ui(uiInstance), imageLoader(imageLoader), ledStrip(ledStrip)
 {
-
-    // Initialize menu type
-    current = MAIN_MENU;
 }
 
 void Menu::begin()
@@ -119,6 +116,8 @@ void Menu::handlePress(int buttonPin)
 
     switch (current)
     {
+    case NONE:
+        break;
     case CONFIGURATION:
         handlePressConfiguration(buttonPin);
         break;
@@ -161,6 +160,7 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 
     if (current == menuType)
     {
+        Serial.printf("Menu already selected: %d\n", current);
         return;
     }
 
@@ -172,6 +172,7 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
     }
 
     // Set the current menu type
+    Serial.printf("Menu changed from %d to %d\n", current, menuType);
     current = menuType;
 
     // Clear button data back to default
@@ -182,6 +183,8 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 
     switch (menuType)
     {
+    case NONE:
+        break;
     case CONFIGURATION:
         menuItems[0].visible = true;
         menuItems[0].imagePath = "/dot_accent.png";

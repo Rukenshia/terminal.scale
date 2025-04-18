@@ -104,8 +104,11 @@ void setup()
     ui.beginConfiguration();
   }
 
+  Serial.println("Startup complete");
   ui.menu->selectMenu(MAIN_MENU);
+  ui.menu->taint();
   ui.store->taint();
+  Serial.println("Startup complete - menu selected");
 }
 
 void loop()

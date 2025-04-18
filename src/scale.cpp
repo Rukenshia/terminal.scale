@@ -100,9 +100,11 @@ void Scale::calibrate()
 
     ui.wipeText(bounds);
 
-    ui.typeText("1. Place a known weight", instructionConfig);
+    instructionConfig.font = ui.getIdealFont("Place known weight", nonTitleFonts);
+    ui.typeText("1. Place known weight", instructionConfig);
 
     instructionConfig.y = 80;
+    instructionConfig.font = ui.getIdealFont("2. Press any button", nonTitleFonts);
     auto buttonBounds = ui.typeText("2. Press any button", instructionConfig);
 
     while (digitalRead(PIN_TOPLEFT) == HIGH &&
@@ -118,6 +120,7 @@ void Scale::calibrate()
     tft.fillScreen(TFT_BLACK);
 
     instructionConfig.y = 80;
+    instructionConfig.font = ui.getIdealFont("Measuring...", nonTitleFonts);
     auto measuringBounds = ui.typeText("Measuring...", instructionConfig);
 
     delay(2000);
@@ -133,8 +136,10 @@ void Scale::calibrate()
     auto readingBounds = ui.typeText(buf, instructionConfig);
 
     instructionConfig.y = 120;
-    ui.typeText("Enter weight in milligrams", instructionConfig);
+    instructionConfig.font = ui.getIdealFont("Enter weight in mg", nonTitleFonts);
+    ui.typeText("Enter weight in mg", instructionConfig);
     instructionConfig.y = 160;
+    instructionConfig.font = ui.getIdealFont("via Serial Monitor", nonTitleFonts);
     ui.typeText("via Serial Monitor", instructionConfig);
 
     while (Serial.available() == 0)
@@ -163,6 +168,7 @@ void Scale::calibrate()
     ui.typeText(factorBuf, instructionConfig);
 
     instructionConfig.y = 120;
+    instructionConfig.font = ui.getIdealFont("Restarting...", nonTitleFonts);
     auto restartBounds = ui.typeText("Restarting...", instructionConfig);
 
     esp_restart();
@@ -199,15 +205,19 @@ void Scale::startLoadBag()
 
 void Scale::loadBag(String name)
 {
+    Serial.println("Loading bag");
+
     if (backgroundWeighingTaskHandle != NULL)
     {
+        Serial.println("Deleting background weighing task");
+        delay(1000);
         vTaskDelete(backgroundWeighingTaskHandle);
         backgroundWeighingTaskHandle = NULL;
     }
 
     tft.fillScreen(BACKGROUND_COLOR);
 
-    TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght12pt7b);
+    TextConfig instructionConfig = ui.createTextConfig(&GeistMono_VariableFont_wght14pt7b);
     instructionConfig.y = tft.height() / 2 - 20;
     instructionConfig.enableCursor = false;
     instructionConfig.delay_ms = 20;
@@ -215,9 +225,8 @@ void Scale::loadBag(String name)
     ui.typeText("Place 12oz bag", instructionConfig);
 
     instructionConfig.y += instructionConfig.font->yAdvance + 12;
-    instructionConfig.font = SMALL_FONT;
+    instructionConfig.font = ui.getIdealFont("and press any button", nonTitleFonts);
     ui.typeText("and press any button", instructionConfig);
-    instructionConfig.font = &GeistMono_VariableFont_wght12pt7b;
 
     while (digitalRead(PIN_TOPLEFT) == HIGH &&
            digitalRead(PIN_TOPMIDDLE) == HIGH &&
@@ -228,6 +237,7 @@ void Scale::loadBag(String name)
     }
 
     tft.fillScreen(BACKGROUND_COLOR);
+    instructionConfig.font = &GeistMono_VariableFont_wght12pt7b;
     instructionConfig.y = tft.height() / 2;
     auto bounds = ui.typeText("Measuring...", instructionConfig);
 
@@ -236,13 +246,16 @@ void Scale::loadBag(String name)
 
     ui.wipeText(bounds);
 
+    instructionConfig.font = &GeistMono_VariableFont_wght16pt7b;
     bounds = ui.typeText((String(reading, 1) + " g").c_str(), instructionConfig);
 
     instructionConfig.y += instructionConfig.font->yAdvance + 8;
     instructionConfig.textColor = ACCENT_COLOR;
-    instructionConfig.font = SMALL_FONT;
 
-    ui.typeText((String("-") + String(TERMINAL_COFFEE_BAG_EMPTY_WEIGHT, 2) + " g (bag)").c_str(), instructionConfig);
+    String text = String("-") + String(TERMINAL_COFFEE_BAG_EMPTY_WEIGHT, 2) + " g (bag)";
+    instructionConfig.font = ui.getIdealFont(text.c_str(), nonTitleFonts);
+
+    ui.typeText(text.c_str(), instructionConfig);
 
     ui.menu->clearButtons();
     ui.menu->selectMenu(LOADING_BAG_CONFIRM);
@@ -282,6 +295,7 @@ void Scale::confirmLoadBag()
     loadingBag = false;
     bagName = "flow";
 
+    ui.taint();
     ui.menu->clearButtons();
     ui.menu->selectMenu(MAIN_MENU);
 }

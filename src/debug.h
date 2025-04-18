@@ -5,7 +5,7 @@
 // #define NO_WIFI
 
 // #define WEIGHING_UI_DEBUG
-// #define SERIAL_LISTEN
+#define SERIAL_LISTEN
 // #define LED_SCROLL_INDICATOR_DEBUG
 
 #endif

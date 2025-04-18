@@ -53,7 +53,7 @@ void BagSelect::draw()
     tft.print(bags[selectedBagIndex]);
 
     tft.setTextColor(TEXT_COLOR);
-    tft.setFreeFont(SMALL_FONT);
+    ui.setIdealFont(bags[selectedBagIndex].c_str(), 30, nonTitleFonts);
     tft.setCursor(20, tft.height() / 2 + 20 + 40);
     tft.print("12oz bag");
 }
@@ -61,6 +61,8 @@ void BagSelect::draw()
 void BagSelect::confirmBagSelection()
 {
     ledStrip.turnOff();
+
+    delay(1000);
     scaleManager->loadBag(bags[selectedBagIndex]);
 }
 

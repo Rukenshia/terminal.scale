@@ -14,6 +14,7 @@ class Menu;
 
 enum MenuType
 {
+    NONE,
     CONFIGURATION,
     MAIN_MENU,
     MAIN_MENU_REORDER,
@@ -70,7 +71,7 @@ public:
     static const uint16_t menuClearance = 80;
 
     Menu(TFT_eSPI &tftDisplay, UI &uiInstance, ImageLoader &imageLoaderInstance, LedStrip &ledStrip);
-    MenuType current;
+    MenuType current = NONE;
 
     void begin();
     void clearButtons();

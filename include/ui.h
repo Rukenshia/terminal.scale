@@ -16,10 +16,9 @@ class Scale;
 #include "GeistMonoVariableFont_wght18.h"
 #include "GeistMonoVariableFont_wght16.h"
 #include "GeistMonoVariableFont_wght14.h"
-#include "GeistMonoVariableFont_wght13.h"
 #include "GeistMonoVariableFont_wght12.h"
 #include "GeistMonoVariableFont_wght10.h"
-#include "GeistMonoVariableFont_wght9.h"
+#include "HelvetiPixelFont_wght12.h"
 
 #define ACCENT_COLOR 0xFB00
 #define PRIMARY_COLOR TFT_WHITE
@@ -29,17 +28,23 @@ class Scale;
 #define BAG_COLOR 0x736C
 
 #define MAIN_FONT &GeistMono_VariableFont_wght18pt7b
-#define SMALL_FONT &GeistMono_VariableFont_wght10pt7b
+#define SMALL_FONT &HelvetiPixel12pt7b
 
 const std::vector<const GFXfont *> titleFonts = {
     &GeistMono_VariableFont_wght18pt7b,
     &GeistMono_VariableFont_wght16pt7b,
     &GeistMono_VariableFont_wght14pt7b};
 const std::vector<const GFXfont *> nonTitleFonts = {
-    &GeistMono_VariableFont_wght13pt7b,
     &GeistMono_VariableFont_wght12pt7b,
-    &GeistMono_VariableFont_wght10pt7b,
-    &GeistMono_VariableFont_wght9pt7b};
+    &HelvetiPixel12pt7b,
+    &GeistMono_VariableFont_wght10pt7b};
+const std::vector<const GFXfont *> allFonts = {
+    &GeistMono_VariableFont_wght18pt7b,
+    &GeistMono_VariableFont_wght16pt7b,
+    &GeistMono_VariableFont_wght14pt7b,
+    &GeistMono_VariableFont_wght12pt7b,
+    &HelvetiPixel12pt7b,
+    &GeistMono_VariableFont_wght10pt7b};
 
 // Text bounds structure to store position and dimensions of typed text
 struct TextBounds
@@ -131,11 +136,11 @@ public:
     // Typing animation that displays text letter by letter using configuration
     TextBounds typeText(const char *text, const TextConfig &config = defaultText);
     TextBounds typeTitle(const char *text, const TextConfig &config = titleText);
-    TextBounds typeBoundedText(const char *text, TextConfig config = defaultText, std::vector<const GFXfont *> fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght13pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b, &GeistMono_VariableFont_wght9pt7b});
-    const GFXfont *getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght13pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b, &GeistMono_VariableFont_wght9pt7b});
+    TextBounds typeBoundedText(const char *text, TextConfig config = defaultText, std::vector<const GFXfont *> fonts = allFonts);
+    const GFXfont *getIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = allFonts);
     // Get ideal font that doesn't clip the tft, returns width
-    int16_t setIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght13pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b, &GeistMono_VariableFont_wght9pt7b});
-    int16_t setIdealFont(const char *text, uint16_t padding, const std::vector<const GFXfont *> &fonts = {&GeistMono_VariableFont_wght18pt7b, &GeistMono_VariableFont_wght16pt7b, &GeistMono_VariableFont_wght14pt7b, &GeistMono_VariableFont_wght13pt7b, &GeistMono_VariableFont_wght12pt7b, &GeistMono_VariableFont_wght10pt7b, &GeistMono_VariableFont_wght9pt7b});
+    int16_t setIdealFont(const char *text, const std::vector<const GFXfont *> &fonts = allFonts);
+    int16_t setIdealFont(const char *text, uint16_t padding, const std::vector<const GFXfont *> &fonts = allFonts);
 
     // Wipe animation for text that was displayed with typeText
     void wipeText(const TextBounds &bounds, int speed_ms = 1);
@@ -158,6 +163,11 @@ public:
     void drawWeight(float weight);
 
     void loop();
+    void taint()
+    {
+        lastDrawnReading = 0.0f;
+        lastProgressBarFill = 0;
+    }
 
     bool reorderPromptDismissed = false;
 

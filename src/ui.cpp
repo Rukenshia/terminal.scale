@@ -402,7 +402,6 @@ void UI::drawMenu()
 
 void UI::loop()
 {
-
     if (menu->current == STORE ||
         menu->current == STORE_ORDERS ||
         menu->current == STORE_BROWSE)
@@ -476,8 +475,7 @@ void UI::loop()
                             menu->selectMenu(MAIN_MENU);
                             tft.fillScreen(BACKGROUND_COLOR);
                             ledStrip.turnOff();
-                            lastDrawnReading = 0;
-                            lastProgressBarFill = 0;
+                            taint();
                             return;
                         }
 
@@ -486,8 +484,7 @@ void UI::loop()
                             menu->selectMenu(MAIN_MENU);
                             tft.fillScreen(BACKGROUND_COLOR);
                             ledStrip.turnOff();
-                            lastDrawnReading = 0;
-                            lastProgressBarFill = 0;
+                            taint();
                             return;
                         }
 
@@ -500,8 +497,7 @@ void UI::loop()
                     tft.fillScreen(BACKGROUND_COLOR);
                     menu->selectMenu(MAIN_MENU);
                     ledStrip.turnOff();
-                    lastDrawnReading = 0;
-                    lastProgressBarFill = 0;
+                    taint();
                     return;
                 }
                 else
@@ -666,8 +662,7 @@ void UI::dismissReorderPrompt()
 {
     reorderPromptDismissed = true;
     tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
-    lastDrawnReading = 0;
-    lastProgressBarFill = 0;
+    taint();
     stopBlinking();
     ledStrip.turnOff();
     menu->selectMenu(MAIN_MENU, false);
