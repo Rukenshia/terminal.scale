@@ -17,7 +17,7 @@ void BagSelect::draw()
     tft.fillRect(0, Menu::menuClearance - 24, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
     ui.menu->redraw();
 
-    tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+    tft.setFreeFont(SMALL_FONT);
     tft.setTextColor(PREVIEW_COLOR);
 
     const uint16_t yPos = Menu::menuClearance - 26;
@@ -53,7 +53,7 @@ void BagSelect::draw()
     tft.print(bags[selectedBagIndex]);
 
     tft.setTextColor(TEXT_COLOR);
-    tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+    tft.setFreeFont(SMALL_FONT);
     tft.setCursor(20, tft.height() / 2 + 20 + 40);
     tft.print("12oz bag");
 }

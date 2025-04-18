@@ -47,6 +47,8 @@ public:
     void previousProduct();
     void nextProduct();
     void buyProduct();
+    void orderProduct(String name);
+    void orderProduct(Product product, Variant variant);
 
     void reset()
     {

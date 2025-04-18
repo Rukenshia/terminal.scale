@@ -119,12 +119,18 @@ void Menu::handlePress(int buttonPin)
 
     switch (current)
     {
+    case CONFIGURATION:
+        handlePressConfiguration(buttonPin);
+        break;
     case MAIN_MENU:
     case MAIN_MENU_REORDER:
         handlePressMainMenu(buttonPin);
         break;
     case MAIN_MENU_PROMPT_REORDER:
         handlePressMainMenuPromptReorder(buttonPin);
+        break;
+    case MAIN_MENU_PROMPT_REORDER_AUTO:
+        break;
     case SELECT_BAG:
         handlePressSelectBag(buttonPin);
         break;
@@ -176,6 +182,18 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
 
     switch (menuType)
     {
+    case CONFIGURATION:
+        menuItems[0].visible = true;
+        menuItems[0].imagePath = "/dot_accent.png";
+        menuItems[0].text = "Yes";
+        menuItems[0].color = ACCENT_COLOR;
+
+        menuItems[1].visible = false;
+
+        menuItems[2].visible = true;
+        menuItems[2].imagePath = "/dot.png";
+        menuItems[2].text = "No";
+        break;
     case MAIN_MENU:
         menuItems[0].visible = true;
         menuItems[0].imagePath = "/dot.png";
@@ -284,6 +302,22 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
     }
 
     draw();
+}
+
+void Menu::handlePressConfiguration(int buttonPin)
+{
+    switch (buttonPin)
+    {
+    case PIN_TOPLEFT:
+        ui.finishConfiguration(true);
+        break;
+    case PIN_TOPRIGHT:
+        ui.finishConfiguration(false);
+        break;
+    default:
+        Serial.println("Unknown Button Pressed");
+        break;
+    }
 }
 
 void Menu::handlePressMainMenu(int buttonPin)
@@ -482,7 +516,7 @@ void Menu::draw()
         // Draw the text below the icon
         tft.setTextColor(menuItems[i].color);
         tft.setTextSize(1);
-        tft.setFreeFont(&GeistMono_VariableFont_wght10pt7b);
+        tft.setFreeFont(SMALL_FONT);
 
         Serial.printf("text=%s x=%d y=%d\n", item.text.c_str(), centerX, iconY + iconHeight + 10);
         tft.setCursor(centerX + (imageWidth - tft.textWidth(item.text.c_str())) / 2, iconY + iconHeight + 10);

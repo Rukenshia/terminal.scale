@@ -4,9 +4,9 @@
 > This project is not affiliated with terminal.shop. It's an entry for their API contest.
 
 Don't you miss the good old days of [Amazon Dash](https://en.wikipedia.org/wiki/Amazon_Dash)? What if we could bring it back, but like... better?
-This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy people who want someone else to tell them when to buy new coffee.
+This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy, single dosing, people who want someone else to tell them when to buy new coffee.
 
-✝︎: this project does not use AI in any way, shape, or form. Some code was vibed by it, but sadly all we really need is a load cell. It's a scale.
+✝︎: the scale does not use AI in any way, shape, or form. Some code was vibed by it, but sadly all we really need is a load cell. It's a scale.
 
 ## Meet the scale
 
@@ -17,7 +17,7 @@ This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy
 
 - Browse and buy coffee from [terminal.shop](https://terminal.shop)
 - View order history
-- Get notified when you are running out of coffee
+- Get notified when you are running out of coffee, reorder automatically (if you want to)
 - Weigh your coffee bag (it's actually pretty accurate!)
 - Includes a 2" LCD display, four buttons to interact with the scale, and a led strip for additional visual feedback
 - User-guided setup process
@@ -33,6 +33,12 @@ This AI™✝︎ powered coffee _bag_ scale offers the perfect solution for lazy
 
 The scale is configured to take a measurement every second. It detects if a bag is removed from the surface (for example when you are taking it off so that you can get the beans you need). If the bag is placed on the scale and the weight falls below 150g (configurable in [`src/scale.h`](src/scale.h)), the scale will start showing a `Reorder` button on the top right menu. Pressing this button will take you to the terminal.shop website where you can reorder the bag.
 Once the weight falls below 100g, you will be prompted whether you would like to reorder the same bag. Dismissing the prompt will mute it until you switch menus, restart the scale, or the weight goes back above 100g.
+During the configuration, you can decide whether you want the scale to automatically reorder the bag when it falls below 100g. If you choose this option, the following logic applies:
+
+- Show messaging with a countdown (60 seconds)
+- Pressing any button during the countdown will cancel the order
+- If the countdown reaches 0, the order will be placed automatically
+- When an order was placed or the reordering process was cancelled, no new order will be placed until a new bag has been loaded
 
 ### Loading Bags
 

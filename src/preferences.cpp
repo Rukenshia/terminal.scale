@@ -62,6 +62,45 @@ bool PreferencesManager::isScaleCalibrated()
     return isCalibrated;
 }
 
+bool PreferencesManager::isConfigured()
+{
+    begin(true);
+    bool configured = preferences.isKey("auto");
+    Serial.printf("Configured: %d\n", configured);
+    end();
+    return configured;
+}
+
+bool PreferencesManager::shouldReorderAutomatically()
+{
+    begin();
+    bool value = preferences.getBool("auto", false);
+    end();
+    return value;
+}
+
+void PreferencesManager::setShouldReorderAutomatically(bool value)
+{
+    begin();
+    preferences.putBool("auto", value);
+    end();
+}
+
+bool PreferencesManager::doNotReorder()
+{
+    begin(true);
+    bool value = preferences.getBool("block", false);
+    end();
+    return value;
+}
+
+void PreferencesManager::setDoNotReorder(bool value)
+{
+    begin();
+    preferences.putBool("block", value);
+    end();
+}
+
 bool PreferencesManager::hasCoffeeBag()
 {
     begin(true);

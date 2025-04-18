@@ -26,12 +26,12 @@
 
 HX711 scale;
 
+PreferencesManager preferences = PreferencesManager();
 TFT_eSPI tft = TFT_eSPI();
 LedStrip ledStrip = LedStrip();
 WiFiManager wifi = WiFiManager();
 TerminalApi terminalApi = TerminalApi();
-UI ui = UI(tft, ledStrip, terminalApi);
-PreferencesManager preferences = PreferencesManager();
+UI ui = UI(tft, ledStrip, terminalApi, preferences);
 Scale scaleManager(scale, tft, ui, preferences, terminalApi, PIN_DT, PIN_SCK);
 
 void listFiles(const char *dirname);
@@ -94,16 +94,18 @@ void setup()
     Serial.println("Scale not calibrated. Starting calibration mode...");
     scaleManager.calibrate();
   }
-  else
-  {
+
 #ifndef FAST_STARTUP
-    ui.terminalAnimation();
+  ui.terminalAnimation();
 #endif
 
-    // ui.menu->selectMenu(MAIN_MENU);
-    ui.menu->selectMenu(STORE);
-    ui.store->taint();
+  if (!preferences.isConfigured())
+  {
+    ui.beginConfiguration();
   }
+
+  ui.menu->selectMenu(MAIN_MENU);
+  ui.store->taint();
 }
 
 void loop()

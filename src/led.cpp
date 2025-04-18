@@ -216,6 +216,42 @@ void LedStrip::progress(float percentage, RgbColor color) // percentage: 0.0 to 
     strip.Show();
 }
 
+void LedStrip::reverseProgress(float percentage, RgbColor color) // percentage: 0.0 to 1.0
+{
+    // Light LEDs up from right to left
+    static const uint8_t maxBrightness = 128;
+    Serial.printf("Reverse progress: %.2f\n", percentage);
+    percentage = max(0.0f, min(1.0f, percentage));
+    int ledCount = (int)(NUM_LEDS * percentage);
+    int lastLedBrightness = (int)(maxBrightness * (percentage - (float)ledCount / NUM_LEDS) * NUM_LEDS);
+
+    for (int i = NUM_LEDS - 1; i >= 0; i--)
+    {
+        if (i > NUM_LEDS - ledCount - 1)
+        {
+            strip.SetPixelColor(i, color);
+        }
+        else if (i == NUM_LEDS - ledCount - 1)
+        {
+            if (lastLedBrightness > 0)
+            {
+                strip.SetPixelColor(i, RgbColor(color.R * lastLedBrightness / maxBrightness,
+                                                color.G * lastLedBrightness / maxBrightness,
+                                                color.B * lastLedBrightness / maxBrightness));
+            }
+            else
+            {
+                strip.SetPixelColor(i, RgbColor(0, 0, 0));
+            }
+        }
+        else
+        {
+            strip.SetPixelColor(i, RgbColor(0, 0, 0));
+        }
+    }
+    strip.Show();
+}
+
 void LedStrip::scrollIndicator(uint index, uint size, RgbColor color)
 {
     // get the LED relative to the start of the strip
@@ -245,4 +281,14 @@ void LedStrip::scrollIndicator(uint index, uint size, RgbColor color)
         }
     }
     strip.Show();
+}
+
+void LedStrip::reorderIndication()
+{
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        strip.SetPixelColor(i, RgbColor(16, 2, 0));
+    }
+    strip.Show();
+    showingReorderIndicator = true;
 }

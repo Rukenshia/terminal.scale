@@ -215,7 +215,7 @@ void Scale::loadBag(String name)
     ui.typeText("Place 12oz bag", instructionConfig);
 
     instructionConfig.y += instructionConfig.font->yAdvance + 12;
-    instructionConfig.font = &GeistMono_VariableFont_wght10pt7b;
+    instructionConfig.font = SMALL_FONT;
     ui.typeText("and press any button", instructionConfig);
     instructionConfig.font = &GeistMono_VariableFont_wght12pt7b;
 
@@ -240,7 +240,7 @@ void Scale::loadBag(String name)
 
     instructionConfig.y += instructionConfig.font->yAdvance + 8;
     instructionConfig.textColor = ACCENT_COLOR;
-    instructionConfig.font = &GeistMono_VariableFont_wght10pt7b;
+    instructionConfig.font = SMALL_FONT;
 
     ui.typeText((String("-") + String(TERMINAL_COFFEE_BAG_EMPTY_WEIGHT, 2) + " g (bag)").c_str(), instructionConfig);
 
@@ -276,7 +276,8 @@ void Scale::confirmLoadBag()
     ui.wipeText(bounds);
 
     preferences.setHasCoffeeBag(true);
-    preferences.setCoffeeBagName("flow");
+    preferences.setCoffeeBagName(bagName);
+    preferences.setDoNotReorder(false);
     hasBag = true;
     loadingBag = false;
     bagName = "flow";

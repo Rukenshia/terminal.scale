@@ -14,9 +14,11 @@ class Menu;
 
 enum MenuType
 {
+    CONFIGURATION,
     MAIN_MENU,
     MAIN_MENU_REORDER,
     MAIN_MENU_PROMPT_REORDER,
+    MAIN_MENU_PROMPT_REORDER_AUTO,
     SELECT_BAG,
     LOADING_BAG_CONFIRM,
     STORE,
@@ -55,6 +57,7 @@ private:
         {true, "TR", "/down.png", 0xBDD8},
     };
 
+    void handlePressConfiguration(int buttonPin);
     void handlePressMainMenu(int buttonPin);
     void handlePressMainMenuPromptReorder(int buttonPin);
     void handlePressLoadingBagConfirm(int buttonPin);

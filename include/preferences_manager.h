@@ -19,6 +19,13 @@ public:
     void setScaleZeroOffset(long zeroOffset);
     void deleteCalibrationData();
 
+    bool isConfigured();
+    bool shouldReorderAutomatically();
+    void setShouldReorderAutomatically(bool value);
+
+    bool doNotReorder();
+    void setDoNotReorder(bool value);
+
     float getScaleCalibrationFactor();
     long getScaleZeroOffset();
 

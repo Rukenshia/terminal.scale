@@ -92,15 +92,16 @@ void Store::drawOrders()
 
     tft.fillRect(0, Menu::menuClearance - tft.fontHeight(), tft.width(), tft.height(), BACKGROUND_COLOR);
 
-    const uint16_t startY = Menu::menuClearance + 60;
+    const uint16_t startY = Menu::menuClearance + 40;
 
     tft.setTextColor(ACCENT_COLOR);
     tft.setCursor(20, startY);
 
     auto &order = orders[orderIndex];
-    ui.setIdealFont(order.id.c_str(), 30);
+    String orderId = order.id.substring(0, 16) + "..";
+    ui.setIdealFont(orderId.c_str(), 30);
 
-    tft.print(order.id.c_str());
+    tft.print(orderId);
 
     String status = "UNKNOWN";
     if (!order.tracking.status.isEmpty())
@@ -348,7 +349,7 @@ void Store::buyProduct()
         auto color = RgbColor::LinearBlend(
             RgbColor(194, 126, 0),
             RgbColor(255, 94, 0), linearProgress);
-        ledStrip.progress(linearProgress, color);
+        ledStrip.reverseProgress(linearProgress, color);
 
         if (elapsedTime >= animationDuration)
         {
@@ -366,6 +367,33 @@ void Store::buyProduct()
         return;
     }
 
+    orderProduct(products[productIndex],
+                 products[productIndex].variants[0]);
+}
+
+void Store::orderProduct(String bagName)
+{
+    if (!productsLoaded)
+    {
+        loadProducts();
+        if (products.empty())
+        {
+            return;
+        }
+    }
+
+    auto index = std::find_if(products.begin(), products.end(),
+                              [&bagName](const Product &product)
+                              {
+                                  return product.name == bagName;
+                              }) -
+                 products.begin();
+
+    orderProduct(products[index], products[index].variants[0]);
+}
+
+void Store::orderProduct(Product product, Variant variant)
+{
     tft.fillScreen(BACKGROUND_COLOR);
     auto bounds = ui.typeTitle("Clearing cart...");
     if (terminalApi.clearCart())
