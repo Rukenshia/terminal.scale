@@ -11,7 +11,7 @@ While it can be used to weigh anything, the scale is connected to the [terminal.
 
 ## Meet the scale
 
-<video controls src="https://github.com/user-attachments/assets/58875265-ea0f-4838-ae95-c2b5052e64b7" />
+<video controls src="https://github.com/user-attachments/assets/58875265-ea0f-4838-ae95-c2b5052e64b7"></video>
 
 > [!NOTE]
 > Why not `cron`? Good question. Trust issues. Why trust terminal to send me coffee on a schedule when I can have trust issues with my own code?
