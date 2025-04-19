@@ -1,5 +1,7 @@
 # terminal.scale
 
+<img src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/splash.jpg">
+
 > [!NOTE]
 > This project is not affiliated with terminal.shop. It's an entry for their API contest.
 
