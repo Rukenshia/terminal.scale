@@ -10,11 +10,14 @@ class UI;
 #include "terminal_api.h"
 #include "led.h"
 
-#define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 16.0f
+#define TERMINAL_COFFEE_BAG_EMPTY_WEIGHT 15.2f
 #define TERMINAL_COFFEE_WEIGHT 340.0f // 12oz
 #define TERMINAL_COFFEE_BAG_WEIGHT TERMINAL_COFFEE_WEIGHT + TERMINAL_COFFEE_BAG_EMPTY_WEIGHT
 #define REORDER_BUTTON_THRESHOLD 150.0f
 #define REORDER_BUTTON_PROMPT_THRESHOLD 80.0f
+
+#define SINGLE_DOSE_WEIGHT 8.0f
+#define DOUBLE_DOSE_WEIGHT 16.0f
 
 #define TEXT_COLOR_RED 0xD165
 #define TEXT_COLOR_GREEN 0x6E24
@@ -55,9 +58,9 @@ public:
     bool hasBag = false;
     bool loadingBag = false;
     String bagName = "Unknown";
-    float lastReading = 0.0f;
+    volatile float lastReading = 0.0f;
 
-    int backgroundWeighingDelay = 1000;
+    volatile bool fastMeasuring = false;
 
     bool bagRemovedFromSurface = false;
     unsigned long bagRemovedTime = 0;

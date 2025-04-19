@@ -103,6 +103,7 @@ void setup()
   {
     ui.beginConfiguration();
   }
+  preferences.setShouldReorderAutomatically(false);
 
   Serial.println("Startup complete");
   ui.menu->selectMenu(MAIN_MENU);

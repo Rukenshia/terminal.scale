@@ -420,131 +420,8 @@ void UI::loop()
 
     if (!scaleManager->bagRemovedFromSurface)
     {
-        if (scaleManager->bagIsBelowThreshold)
-        {
-            if (menu->current == MAIN_MENU)
-            {
-                menu->selectMenu(MAIN_MENU_REORDER, false);
-                menu->taint();
-            }
-        }
-        else
-        {
-            if (menu->current == MAIN_MENU_REORDER)
-            {
-                menu->selectMenu(MAIN_MENU, false);
-                menu->taint();
-            }
-        }
-
-        if (scaleManager->bagIsBelowPromptThreshold)
-        {
-            if (preferences.shouldReorderAutomatically())
-            {
-                if (!preferences.doNotReorder())
-                {
-                    unsigned long startTime = millis();
-                    unsigned long endTime = startTime + 60000;
-                    long remaining = endTime - millis();
-
-                    menu->selectMenu(MAIN_MENU_PROMPT_REORDER_AUTO, false);
-
-                    int lastRenderedSecond = -1;
-                    tft.fillScreen(ACCENT_COLOR);
-                    ledStrip.reorderAnimation();
-
-                    String text = "Press any button to cancel";
-                    auto width = setIdealFont(text.c_str(), 16, nonTitleFonts);
-                    tft.setCursor(tft.width() / 2 - width / 2, tft.height() / 2 + 40);
-                    tft.setTextColor(BACKGROUND_COLOR);
-                    tft.print(text.c_str());
-
-                    while (remaining > 0)
-                    {
-                        remaining = endTime - millis();
-                        auto second = (remaining / 1000);
-                        text = "Reordering in " + String(second) + "s";
-
-                        if (second != lastRenderedSecond)
-                        {
-                            lastRenderedSecond = second;
-                            auto width = setIdealFont(text.c_str(), 16);
-                            tft.fillRect(0, tft.height() / 2 - GeistMono_VariableFont_wght18pt7b.yAdvance / 2,
-                                         tft.width(), GeistMono_VariableFont_wght18pt7b.yAdvance, ACCENT_COLOR);
-                            tft.setCursor((tft.width() - width) / 2, tft.height() / 2);
-                            tft.setTextColor(BACKGROUND_COLOR);
-                            tft.print(text.c_str());
-                        }
-
-                        if (menu->checkButtonEvents())
-                        {
-                            preferences.setDoNotReorder(true);
-                            menu->selectMenu(MAIN_MENU);
-                            tft.fillScreen(BACKGROUND_COLOR);
-                            ledStrip.turnOff();
-                            taint();
-                            return;
-                        }
-
-                        if (!scaleManager->bagIsBelowPromptThreshold)
-                        {
-                            menu->selectMenu(MAIN_MENU);
-                            tft.fillScreen(BACKGROUND_COLOR);
-                            ledStrip.turnOff();
-                            taint();
-                            return;
-                        }
-
-                        delay(500);
-                        remaining = endTime - millis();
-                    }
-
-                    // store->orderProduct(scaleManager->bagName);
-                    // preferences.setDoNotReorder(true);
-                    tft.fillScreen(BACKGROUND_COLOR);
-                    menu->selectMenu(MAIN_MENU);
-                    ledStrip.turnOff();
-                    taint();
-                    return;
-                }
-                else
-                {
-                    ledStrip.reorderIndication();
-                }
-            }
-            else if (!reorderPromptDismissed)
-            {
-                if (menu->current != MAIN_MENU_PROMPT_REORDER)
-                {
-                    ledStrip.reorderAnimation();
-                    menu->selectMenu(MAIN_MENU_PROMPT_REORDER, false);
-                    menu->taint();
-                    drawMenu();
-                    drawReorderPrompt();
-                    return;
-                }
-
-                return;
-            }
-        }
-        else
-        {
-            if (ledStrip.showingReorderIndicator)
-            {
-                ledStrip.turnOff();
-                ledStrip.showingReorderIndicator = false;
-            }
-            if (menu->current == MAIN_MENU_PROMPT_REORDER)
-            {
-                menu->selectMenu(MAIN_MENU, false);
-                menu->taint();
-                ledStrip.turnOff();
-            }
-            reorderPromptDismissed = false;
-        }
+        handleBagNotOnSurface();
     }
-
-    drawMenu();
 
     if (scaleManager->loadingBag)
     {
@@ -553,6 +430,7 @@ void UI::loop()
             reorderPromptDismissed = false;
         }
         bagSelect->draw();
+        drawMenu();
         return;
     }
 
@@ -577,6 +455,7 @@ void UI::loop()
             drawnBagNotFound = true;
         }
 
+        drawMenu();
         return;
     }
 
@@ -592,10 +471,14 @@ void UI::loop()
     if (menu->current == BARISTA_SINGLE || menu->current == BARISTA_DOUBLE)
     {
         scaleManager->drawBaristaMode();
+
+        drawMenu();
         return;
     }
 
     drawWeight(scaleManager->lastReading);
+
+    drawMenu();
 }
 
 void UI::drawWeight(float weight)
@@ -668,7 +551,7 @@ void UI::drawReorderPrompt()
 {
     tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
 
-    auto bounds = typeTitle("Reorder bag?");
+    auto bounds = typeTitle("Order new bag?");
     startBlinkingAt(bounds);
 }
 
@@ -680,4 +563,135 @@ void UI::dismissReorderPrompt()
     stopBlinking();
     ledStrip.turnOff();
     menu->selectMenu(MAIN_MENU, false);
+}
+
+void UI::handleBagNotOnSurface()
+{
+    if (scaleManager->bagIsBelowThreshold)
+    {
+        if (menu->current == MAIN_MENU)
+        {
+            menu->selectMenu(MAIN_MENU_REORDER, false);
+            menu->taint();
+        }
+    }
+    else
+    {
+        if (menu->current == MAIN_MENU_REORDER)
+        {
+            menu->selectMenu(MAIN_MENU, false);
+            menu->taint();
+        }
+    }
+
+    if (scaleManager->bagIsBelowPromptThreshold)
+    {
+        if (preferences.shouldReorderAutomatically())
+        {
+            if (!preferences.doNotReorder())
+            {
+                drawAutoReorder();
+                return;
+            }
+            else
+            {
+                ledStrip.reorderIndication();
+            }
+        }
+        else if (!reorderPromptDismissed)
+        {
+            if (menu->current != MAIN_MENU_PROMPT_REORDER)
+            {
+                ledStrip.reorderAnimation();
+                menu->selectMenu(MAIN_MENU_PROMPT_REORDER, false);
+                menu->taint();
+                drawMenu();
+                drawReorderPrompt();
+                return;
+            }
+
+            return;
+        }
+    }
+    else
+    {
+        if (ledStrip.showingReorderIndicator)
+        {
+            ledStrip.turnOff();
+            ledStrip.showingReorderIndicator = false;
+        }
+        if (menu->current == MAIN_MENU_PROMPT_REORDER)
+        {
+            menu->selectMenu(MAIN_MENU, false);
+            menu->taint();
+            ledStrip.turnOff();
+        }
+        reorderPromptDismissed = false;
+    }
+}
+
+void UI::drawAutoReorder()
+{
+    unsigned long startTime = millis();
+    unsigned long endTime = startTime + 60000;
+    long remaining = endTime - millis();
+
+    menu->selectMenu(MAIN_MENU_PROMPT_REORDER_AUTO, false);
+
+    int lastRenderedSecond = -1;
+    tft.fillScreen(ACCENT_COLOR);
+    ledStrip.reorderAnimation();
+
+    String text = "Press any button to cancel";
+    auto width = setIdealFont(text.c_str(), 16, nonTitleFonts);
+    tft.setCursor(tft.width() / 2 - width / 2, tft.height() / 2 + 40);
+    tft.setTextColor(BACKGROUND_COLOR);
+    tft.print(text.c_str());
+
+    while (remaining > 0)
+    {
+        remaining = endTime - millis();
+        auto second = (remaining / 1000);
+        text = "Ordering in " + String(second) + "s";
+
+        if (second != lastRenderedSecond)
+        {
+            lastRenderedSecond = second;
+            auto width = setIdealFont(text.c_str(), 16);
+            tft.fillRect(0, tft.height() / 2 - GeistMono_VariableFont_wght18pt7b.yAdvance / 2,
+                         tft.width(), GeistMono_VariableFont_wght18pt7b.yAdvance, ACCENT_COLOR);
+            tft.setCursor((tft.width() - width) / 2, tft.height() / 2);
+            tft.setTextColor(BACKGROUND_COLOR);
+            tft.print(text.c_str());
+        }
+
+        if (menu->checkButtonEvents())
+        {
+            preferences.setDoNotReorder(true);
+            tft.fillScreen(BACKGROUND_COLOR);
+            menu->selectMenu(MAIN_MENU);
+            ledStrip.turnOff();
+            taint();
+            return;
+        }
+
+        if (!scaleManager->bagIsBelowPromptThreshold)
+        {
+            tft.fillScreen(BACKGROUND_COLOR);
+            menu->selectMenu(MAIN_MENU);
+            ledStrip.turnOff();
+            taint();
+            return;
+        }
+
+        delay(500);
+        remaining = endTime - millis();
+    }
+
+    // store->orderProduct(scaleManager->bagName);
+    // preferences.setDoNotReorder(true);
+    tft.fillScreen(BACKGROUND_COLOR);
+    menu->selectMenu(MAIN_MENU);
+    ledStrip.turnOff();
+    taint();
 }

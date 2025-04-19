@@ -11,28 +11,28 @@ While it can be used to weigh anything, the scale is connected to the [terminal.
 
 ## Meet the scale
 
+<video src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/scale.mp4" width="50%" controls></video>
+
 > [!NOTE]
 > Why not `cron`? Good question. Trust issues. Why trust terminal to send me coffee on a schedule when I can have trust issues with my own code?
 
 ## Features
 
+- Weigh your coffee bag (it's actually pretty accurate!)
+- Use it as a normal scale and in "Barista Mode" (see below)
 - Browse and buy coffee from [terminal.shop](https://terminal.shop)
 - View order history
 - Get notified when you are running out of coffee, reorder automatically (if you want to)
-- Weigh your coffee bag (it's actually pretty accurate!)
 - Includes a 2" LCD display, four buttons to interact with the scale, and a led strip for additional visual feedback
 - User-guided setup process
-
-## Features that didn't make it (yet)
-
-- The reverse-coffee scale: enter the barista mode and let the scale tell you when you took enough coffee out of the bag.
-- AI: I don't know why but my OKRs tell me that I need to add AI to everything.
 
 ## Usage
 
 ### Continuous Weighing
 
-The scale is configured to take a measurement every second. It detects if a bag is removed from the surface (for example when you are taking it off so that you can get the beans you need). If the bag is placed on the scale and the weight falls below 150g (configurable in [`src/scale.h`](src/scale.h)), the scale will start showing a `Reorder` button on the top right menu. Pressing this button will take you to the terminal.shop website where you can reorder the bag.
+<img alt="Continuous Weighing" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/bag_loaded.jpg" width="50%">
+
+The scale is configured to take a measurement every second. It detects if a bag is removed from the surface (for example when you are taking it off so that you can get the beans you need). If the bag is placed on the scale and the weight falls below 150g (configurable in [`src/scale.h`](src/scale.h)), the scale will start showing an `Order` button on the top right menu. Pressing this button will take you to the terminal.shop website where you can reorder the bag.
 Once the weight falls below 100g, you will be prompted whether you would like to reorder the same bag. Dismissing the prompt will mute it until you switch menus, restart the scale, or the weight goes back above 100g.
 During the configuration, you can decide whether you want the scale to automatically reorder the bag when it falls below 100g. If you choose this option, the following logic applies:
 
@@ -41,10 +41,24 @@ During the configuration, you can decide whether you want the scale to automatic
 - If the countdown reaches 0, the order will be placed automatically
 - When an order was placed or the reordering process was cancelled, no new order will be placed until a new bag has been loaded
 
+|                                                                                                                       |                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| ![Reorder Prompt](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/reorder_prompt.jpg) | ![Automatic Reorder](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/reorder_auto.jpg) |
+
 ### Loading Bags
 
 1. Press the `Load Bag` button on the top left
 1. Select the bag you want to load, follow on-screen instructions
+
+### Barista Mode
+
+|                                                                                                                            |                                                                                                                                  |                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| ![Barista Mode - Empty](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/barista_empty.jpg) | ![Barista Mode - Progress](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/barista_progress.jpg) | ![Barista Mode - Green](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/barista_green.jpg) |
+
+You can turn Barista Mode on from the main menu. This will disable the tracking of your coffee bag weight and allow you to instead measure your coffee beans. When turning this mode on, the scale will tare automatically (I recommend taking the bag off, then turning barista mode on). You can also manually tare it by pressing the `Tare` menu button.
+The scale allows you to switch between `single` and `double` dosing through the menu. The values for the doses are configurable in [`src/scale.h`](src/scale.h). You will see visual indications on the display and LED strip as you get closer to the target weight. A green light and UI is shown when you are less than 0.5g away from the target weight. Once
+over the target weight, the UI will turn red.
 
 ### Store
 
@@ -52,9 +66,15 @@ You can open the store from the main menu by pressing the orange `Terminal` butt
 
 #### Order History
 
+<img alt="Order History" src="https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/store_order.jpg" width="50%">
+
 You can scroll through your order history and see the order ID, the date you ordered, and if available the delivery status.
 
 #### Browsing the Store
+
+|                                                                                                                    |                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| ![Store - Products](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/store_buy.jpg) | ![Store - Product Details](https://raw.githubusercontent.com/Rukenshia/terminal.scale/refs/heads/main/docs/store_buy_hold.jpg) |
 
 You can scroll through the currently available products. Currently, only `12oz` variants are displayed. You can order your coffee by pressing and holding the `Terminal` button for a few seconds (just follow the on-screen instructions).
 

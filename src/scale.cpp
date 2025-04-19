@@ -279,9 +279,9 @@ void Scale::confirmLoadBag()
 
 float Scale::readWeight(int samples)
 {
-    if (scale.wait_ready_retry(3, 50))
+    if (scale.wait_ready_retry(2, fastMeasuring ? 10 : 50))
     {
-        float reading = scale.get_units(samples);
+        float reading = scale.get_units(fastMeasuring ? 5 : samples);
 
         if (hasBag && !baristaMode)
         {
@@ -386,7 +386,7 @@ void Scale::backgroundWeighingTask(void *parameter)
             }
         }
 
-        vTaskDelay(scale->backgroundWeighingDelay / portTICK_PERIOD_MS);
+        vTaskDelay((scale->fastMeasuring ? 100 : 1000) / portTICK_PERIOD_MS);
     }
 }
 
@@ -418,25 +418,48 @@ void Scale::stopBackgroundWeighingTask()
 // Enter Barista mode: single shot by default
 void Scale::enterBaristaMode()
 {
+    // FIXME: use a mutex (i'm sorry for anyone reading this)
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskSuspend(backgroundWeighingTaskHandle);
+    }
     tft.fillScreen(BACKGROUND_COLOR);
+
+    delay(500);
     baristaMode = true;
     ui.menu->selectMenu(BARISTA_SINGLE);
     ui.taint();
-    backgroundWeighingDelay = 100;
+    fastMeasuring = true;
     tare();
+
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskResume(backgroundWeighingTaskHandle);
+    }
 }
 
 // Exit Barista mode: return to main menu
 void Scale::leaveBaristaMode()
 {
+    // FIXME: use a mutex
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskSuspend(backgroundWeighingTaskHandle);
+    }
+    delay(500);
     scale.set_offset(preferences.getScaleZeroOffset());
-    backgroundWeighingDelay = 1000;
+    fastMeasuring = false;
     baristaMode = false;
     baristaLastProgress = -99;
     baristaLastDrawnReading = -99.0f;
     ui.menu->selectMenu(MAIN_MENU);
     ledStrip.turnOff();
     ui.taint();
+
+    if (backgroundWeighingTaskHandle != NULL)
+    {
+        vTaskResume(backgroundWeighingTaskHandle);
+    }
 }
 
 // Draw Barista mode UI with progress towards target shot weight
@@ -457,7 +480,7 @@ void Scale::drawBaristaMode()
     baristaLastDrawnReading = weight;
 
     // determine target based on mode
-    float target = (ui.menu->current == BARISTA_SINGLE) ? 12.0f : 21.0f;
+    float target = (ui.menu->current == BARISTA_SINGLE) ? SINGLE_DOSE_WEIGHT : DOUBLE_DOSE_WEIGHT;
 
     // calculate progress 0.0 to 1.0
     float progress = weight / target;
@@ -498,7 +521,7 @@ void Scale::drawBaristaMode()
     tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
     tft.setCursor(progressX + progressWidth + 10, progressY + GeistMono_VariableFont_wght12pt7b.yAdvance);
     tft.setTextColor(TEXT_COLOR);
-    tft.print((ui.menu->current == BARISTA_SINGLE) ? "Single" : "Double");
+    tft.print((ui.menu->current == BARISTA_SINGLE) ? "single-shot" : "double-shot");
 
     // show weight vs target
     tft.setFreeFont(&GeistMono_VariableFont_wght16pt7b);
@@ -509,12 +532,21 @@ void Scale::drawBaristaMode()
     tft.setTextColor(textColor);
     tft.print(text.c_str());
 
-    tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
-    text = "/ " + String(target, 1) + "g";
-    tft.setCursor(progressX + progressWidth + 10 + textWidth + 8, progressY + progressHeight - 8);
-    tft.print(text.c_str());
+    if (weight >= 0.0f)
+    {
+        tft.setFreeFont(&GeistMono_VariableFont_wght14pt7b);
+        auto x = progressX + progressWidth + 10 + textWidth + 8;
+        tft.setCursor(x, progressY + progressHeight - 8);
+        tft.setTextColor(MUTED_TEXT_COLOR);
+        tft.print("/");
 
-    if (progressBarFill == baristaLastProgress)
+        x += tft.textWidth("/") + 4;
+        tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
+        text = String(target, 1) + "g";
+        tft.print(text.c_str());
+    }
+
+    if (progressBarFill == baristaLastProgress && textColor != TEXT_COLOR_RED)
     {
         return;
     }

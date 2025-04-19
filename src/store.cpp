@@ -416,7 +416,7 @@ void Store::orderProduct(Product product, Variant variant)
     }
     ui.wipeText(bounds);
 
-    bounds = ui.typeTitle(String("Subtotal: $" + String(cart->subtotal / 10)).c_str());
+    bounds = ui.typeTitle(String("Subtotal: $" + String((float)cart->subtotal / 100, 2)).c_str());
     delay(3000);
     ui.wipeText(bounds);
 

@@ -102,6 +102,7 @@ void LedStrip::animationTask(void *parameter)
     }
 
     // Clean up
+    data->instance->animationTaskHandle = NULL;
     delete data;
     vTaskDelete(NULL);
 }
@@ -184,7 +185,6 @@ void LedStrip::createAnimationTask(AnimationData *data)
 void LedStrip::progress(float percentage, RgbColor color) // percentage: 0.0 to 1.0
 {
     static const uint8_t maxBrightness = 128;
-    Serial.printf("Progress: %.2f\n", percentage);
     percentage = max(0.0f, min(1.0f, percentage));
 
     int ledCount = (int)(NUM_LEDS * percentage);

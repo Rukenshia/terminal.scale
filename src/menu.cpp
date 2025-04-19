@@ -219,11 +219,13 @@ void Menu::selectMenu(MenuType menuType, bool shouldDraw)
         menuItems[0].imagePath = "/dot.png";
         menuItems[0].text = "Load Bag";
 
-        menuItems[1].visible = false;
+        menuItems[1].visible = true;
+        menuItems[1].imagePath = "/dot.png";
+        menuItems[1].text = "Barista";
 
         menuItems[2].visible = true;
         menuItems[2].imagePath = "/dot_accent.png";
-        menuItems[2].text = "Reorder";
+        menuItems[2].text = "Order";
         menuItems[2].color = ACCENT_COLOR;
         break;
     case MAIN_MENU_PROMPT_REORDER:
