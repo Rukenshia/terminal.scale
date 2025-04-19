@@ -91,8 +91,8 @@ You can scroll through the currently available products. Currently, only `12oz` 
 | 1kg Load Cell with HX711 module                                                                        | [Amazon](https://amzn.eu/d/5iR4k10)                                          |
 | 2inch LCD Display Module, IPS Screen, 240×320 Resolution, SPI Interface                                | [Waveshare](https://www.waveshare.com/2inch-lcd-module.htm)                  |
 | WS2812 LED Strip (8 LEDs needed)                                                                       | [Amazon](https://amzn.eu/d/2FZAlWC)                                          |
-| PCB Buttons✝︎                                                                                          | [Amazon](https://amzn.eu/d/ifVMcsS)                                          |
-| USB C connector✝︎✝︎                                                                                    | [Amazon](https://amzn.eu/d/873gVnI)                                          |
+| PCB Buttons✝︎                                                                                         | [Amazon](https://amzn.eu/d/ifVMcsS)                                          |
+| USB C connector✝︎✝︎                                                                                  | [Amazon](https://amzn.eu/d/873gVnI)                                          |
 | 2x M4x10mm screws                                                                                      | -                                                                            |
 | 1x M5x16mm screw                                                                                       | -                                                                            |
 | Rubber feet                                                                                            | [Amazon](https://amzn.eu/d/9uYd7lF)                                          |
@@ -126,7 +126,15 @@ I used the following 3D printer materials:
 
 ![3D Model](docs/model.jpg)
 
-The 3D model is available on [MakerWorld](!TODO). It was modeled with onshape and the source file is available [here](https://cad.onshape.com/documents/3b384bc84e744622a2db15e2/w/2cd6301093df21519d2cb877/e/4a26cedb8ca3c7d20522d794?renderMode=0&uiState=68025464e3edd00b6c11fb3d).
+<p align="center">
+    <a href="https://makerworld.com/en/models/1336679-self-restocking-coffee-scale#profileId-1376105">
+        <img src="https://raw.githubusercontent.com/Rukenshia/pomodoro/refs/heads/main/docs/makerworld_logo.png" width="200px" alt="MakerWorld Logo" />
+        <br />
+        View on MakerWorld
+    </a>
+</p>
+
+The 3D model is available on MakerWorld. It was modeled with onshape and the source file is available [here](https://cad.onshape.com/documents/3b384bc84e744622a2db15e2/w/2cd6301093df21519d2cb877/e/4a26cedb8ca3c7d20522d794?renderMode=0&uiState=68025464e3edd00b6c11fb3d).
 
 ## Background
 
