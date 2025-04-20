@@ -155,7 +155,7 @@ public:
 
     void drawMenu();
 
-    void handleBagNotOnSurface();
+    bool handleBagNotOnSurface();
     void drawAutoReorder();
     void drawReorderPrompt();
     void dismissReorderPrompt();

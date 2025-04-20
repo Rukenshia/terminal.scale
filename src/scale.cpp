@@ -182,8 +182,10 @@ void Scale::startLoadBag()
         std::back_inserter(bagList),
         [](const Product &product)
         { return product.name; });
+#ifdef NO_WIFI
     bagList.push_back("[object Object]");
     bagList.push_back("segmentation fault");
+#endif
     ui.bagSelect->setBags(bagList);
 
     ui.stopBlinking();

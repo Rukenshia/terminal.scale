@@ -411,16 +411,10 @@ void UI::loop()
         return;
     }
 
-    // Barista mode: bypass bag-removed and display barista UI
     if (menu->current == BARISTA_SINGLE || menu->current == BARISTA_DOUBLE)
     {
         scaleManager->drawBaristaMode();
         return;
-    }
-
-    if (!scaleManager->bagRemovedFromSurface)
-    {
-        handleBagNotOnSurface();
     }
 
     if (scaleManager->loadingBag)
@@ -432,6 +426,14 @@ void UI::loop()
         bagSelect->draw();
         drawMenu();
         return;
+    }
+
+    if (!scaleManager->bagRemovedFromSurface)
+    {
+        if (!handleBagNotOnSurface())
+        {
+            return;
+        }
     }
 
     if (scaleManager->bagRemovedFromSurface || !scaleManager->hasBag)
@@ -465,15 +467,6 @@ void UI::loop()
         tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
                      tft.width(), tft.height(), BACKGROUND_COLOR);
         stopBlinking();
-    }
-
-    // Barista mode drawing
-    if (menu->current == BARISTA_SINGLE || menu->current == BARISTA_DOUBLE)
-    {
-        scaleManager->drawBaristaMode();
-
-        drawMenu();
-        return;
     }
 
     drawWeight(scaleManager->lastReading);
@@ -565,7 +558,7 @@ void UI::dismissReorderPrompt()
     menu->selectMenu(MAIN_MENU, false);
 }
 
-void UI::handleBagNotOnSurface()
+bool UI::handleBagNotOnSurface()
 {
     if (scaleManager->bagIsBelowThreshold)
     {
@@ -591,7 +584,7 @@ void UI::handleBagNotOnSurface()
             if (!preferences.doNotReorder())
             {
                 drawAutoReorder();
-                return;
+                return false;
             }
             else
             {
@@ -607,10 +600,10 @@ void UI::handleBagNotOnSurface()
                 menu->taint();
                 drawMenu();
                 drawReorderPrompt();
-                return;
+                return false;
             }
 
-            return;
+            return false;
         }
     }
     else
@@ -628,6 +621,8 @@ void UI::handleBagNotOnSurface()
         }
         reorderPromptDismissed = false;
     }
+
+    return true;
 }
 
 void UI::drawAutoReorder()
