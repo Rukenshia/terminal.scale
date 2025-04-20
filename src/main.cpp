@@ -78,8 +78,8 @@ void setup()
   wifi.connect();
   terminalApi.begin(&wifi, TERMINAL_PAT);
 #endif
-  ui.wipeText(bounds);
   ui.stopBlinking();
+  ui.wipeText(bounds);
   if (wifi.isConnected())
   {
     Serial.println("WiFi connected");

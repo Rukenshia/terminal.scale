@@ -61,8 +61,8 @@ void Store::loadOrders()
 #endif
     ordersLoaded = true;
 
-    ui.wipeText(bounds);
     ui.stopBlinking();
+    ui.wipeText(bounds);
 
     if (orders.empty())
     {
@@ -269,8 +269,8 @@ void Store::loadProducts()
 
     productsLoaded = true;
 
-    ui.wipeText(bounds);
     ui.stopBlinking();
+    ui.wipeText(bounds);
 
     if (products.empty())
     {

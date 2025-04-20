@@ -27,6 +27,12 @@ void cursorBlinkTaskWrapper(void *parameter)
     {
         state->isVisible = !state->isVisible;
 
+        if (xSemaphoreTake(state->mutex, 1000 / portTICK_PERIOD_MS) != pdTRUE)
+        {
+            Serial.println("Error: Failed to take mutex in cursorBlinkTask");
+            continue;
+        }
+
         if (state->isVisible)
         {
             uiInstance->tft.fillRect(
@@ -45,6 +51,7 @@ void cursorBlinkTaskWrapper(void *parameter)
                 state->bounds.cursorHeight,
                 BACKGROUND_COLOR);
         }
+        xSemaphoreGive(state->mutex);
 
         vTaskDelay(state->blinkInterval / portTICK_PERIOD_MS);
     }
@@ -348,42 +355,59 @@ void UI::startBlinkingAt(const TextBounds &bounds, unsigned long blinkInterval)
     blinkState->bounds = bounds;
     blinkState->userData = this;
 
-    BaseType_t result = xTaskCreatePinnedToCore(
-        cursorBlinkTaskWrapper,
-        "CursorBlink",
-        4096,
-        (void *)blinkState,
-        8,
-        &cursorBlinkTaskHandle,
-        1 // needs to be pinned to core 1 because we are drawing on the display
-    );
+    // in a better world we would probably either use direct task notifications (no idea how they work) or
+    // just not draw the blinking cursor on a separate task since TFT_eSPI is not thread safe
+    // this is really just a hack and workaround that is like 90% reliable.
+    blinkState->mutex = xSemaphoreCreateMutex();
 
-    if (result != pdPASS)
+    if (!cursorBlinkTaskHandle)
     {
-        Serial.println("Error: Failed to create cursor blink task");
-        delete blinkState;
-        blinkState = NULL;
+        xTaskCreatePinnedToCore(
+            cursorBlinkTaskWrapper,
+            "CursorBlink",
+            4096,
+            (void *)blinkState,
+            24,
+            &cursorBlinkTaskHandle,
+            1 // needs to be pinned to core 1 because we are drawing on the display
+        );
+    }
+    else
+    {
+        vTaskResume(cursorBlinkTaskHandle);
     }
 }
 
+// Stop blinking the cursor (if it is blinking)
+// it's important to call this *before* drawing anything else on the tft, TFT_eSPI is not thread safe
+// but blinking runs on its own task.
 void UI::stopBlinking()
 {
     if (cursorBlinkTaskHandle != NULL)
     {
-        vTaskDelete(cursorBlinkTaskHandle);
+        vTaskSuspend(cursorBlinkTaskHandle);
 
         // Clear the cursor if it's currently visible
         if (blinkState != NULL)
         {
-            tft.fillRect(
-                blinkState->bounds.cursorX,
-                blinkState->bounds.cursorY,
-                blinkState->bounds.cursorWidth,
-                blinkState->bounds.cursorHeight,
-                BACKGROUND_COLOR);
+            // wait for the mutex to be released
+            if (xSemaphoreTake(blinkState->mutex, 1000 / portTICK_PERIOD_MS) == pdTRUE)
+            {
+                tft.fillRect(
+                    blinkState->bounds.cursorX,
+                    blinkState->bounds.cursorY,
+                    blinkState->bounds.cursorWidth,
+                    blinkState->bounds.cursorHeight,
+                    BACKGROUND_COLOR);
 
-            delete blinkState;
-            blinkState = NULL;
+                vSemaphoreDelete(blinkState->mutex);
+                delete blinkState;
+                blinkState = NULL;
+            }
+            else
+            {
+                Serial.println("Error: Failed to take mutex in stopBlinking");
+            }
         }
 
         cursorBlinkTaskHandle = NULL;
@@ -453,6 +477,7 @@ void UI::loop()
             auto bounds = typeText("404", titleTextConfig);
             bounds = typeText("Bag not found", textConfig);
             startBlinkingAt(bounds);
+            menu->selectMenu(MAIN_MENU, false);
 
             drawnBagNotFound = true;
         }
@@ -464,9 +489,9 @@ void UI::loop()
     if (drawnBagNotFound)
     {
         drawnBagNotFound = false;
+        stopBlinking();
         tft.fillRect(0, tft.height() / 2 - titleText.font->yAdvance - 8,
                      tft.width(), tft.height(), BACKGROUND_COLOR);
-        stopBlinking();
     }
 
     drawWeight(scaleManager->lastReading);
@@ -489,16 +514,17 @@ void UI::drawWeight(float weight)
     float progress = max(min(weight / TERMINAL_COFFEE_WEIGHT, 1.0f), 0.0f);
 
     const uint16_t progressX = 20;
-    const uint16_t progressHeight = 100;
-    const uint16_t progressY = tft.height() - progressHeight - 20;
+    const uint16_t progressPadding = 4;
+    const uint16_t totalProgressHeight = 100;
+    const uint16_t innerProgressHeight = totalProgressHeight - progressPadding * 2;
+    const uint16_t progressY = tft.height() - totalProgressHeight - 20;
     const uint16_t progressWidth = 60;
-    const int progressBarFill = constrain(progress * progressHeight, 0, progressHeight);
+    const int progressBarFill = constrain(progress * innerProgressHeight, 0, innerProgressHeight);
 
     auto text = String(weight, 1) + " g";
 
-    // clear weight text area
     tft.fillRect(progressX + progressWidth + 10, progressY,
-                 tft.width() - progressX - progressWidth - 20, progressHeight, BACKGROUND_COLOR);
+                 tft.width() - progressX - progressWidth - 20, totalProgressHeight, BACKGROUND_COLOR);
 
     tft.setTextSize(1);
     tft.setFreeFont(&GeistMono_VariableFont_wght12pt7b);
@@ -508,7 +534,7 @@ void UI::drawWeight(float weight)
 
     tft.setFreeFont(&GeistMono_VariableFont_wght18pt7b);
     tft.setTextColor(TEXT_COLOR);
-    tft.setCursor(progressX + progressWidth + 10, progressY + progressHeight - 8);
+    tft.setCursor(progressX + progressWidth + 10, progressY + totalProgressHeight - 8);
     tft.print(text);
 
     if (progressBarFill == lastProgressBarFill)
@@ -517,13 +543,27 @@ void UI::drawWeight(float weight)
     }
     lastProgressBarFill = progressBarFill;
 
-    tft.fillRect(progressX, progressY, progressWidth, progressHeight, BACKGROUND_COLOR);
-    tft.drawRect(progressX, progressY, progressWidth, progressHeight, BAG_COLOR);
-    tft.fillRect(progressX + 4, progressY + 4 + progressHeight - progressBarFill, progressWidth - 8, progressBarFill - 8, ACCENT_COLOR);
+    tft.fillRect(progressX, progressY, progressWidth, totalProgressHeight, BACKGROUND_COLOR);
+    tft.drawRect(progressX, progressY, progressWidth, totalProgressHeight, BAG_COLOR);
 
-    for (int i = 1; i - 1 < progressBarFill / 20; i++)
+    if (progressBarFill > 0)
     {
-        tft.drawFastHLine(progressX + 2, progressY + 2 + progressHeight - i * 20, progressWidth - 4, BACKGROUND_COLOR);
+        tft.fillRect(progressX + progressPadding,
+                     progressY + progressPadding + innerProgressHeight - progressBarFill,
+                     progressWidth - progressPadding * 2,
+                     progressBarFill,
+                     ACCENT_COLOR);
+    }
+
+    // dividers
+    for (int i = 1; (i * 20) <= progressBarFill; i++)
+    {
+        int lineY = progressY + progressPadding + innerProgressHeight - (i * 20);
+
+        if (lineY >= (progressY + progressPadding + innerProgressHeight - progressBarFill))
+        {
+            tft.drawFastHLine(progressX + progressPadding, lineY, progressWidth - progressPadding * 2, BACKGROUND_COLOR);
+        }
     }
 }
 
@@ -550,10 +590,10 @@ void UI::drawReorderPrompt()
 
 void UI::dismissReorderPrompt()
 {
+    stopBlinking();
     reorderPromptDismissed = true;
     tft.fillRect(0, Menu::menuClearance, tft.width(), tft.height() - Menu::menuClearance, BACKGROUND_COLOR);
     taint();
-    stopBlinking();
     ledStrip.turnOff();
     menu->selectMenu(MAIN_MENU, false);
 }

@@ -10,6 +10,7 @@
 #include "led.h"
 #include "terminal_api.h"
 #include "preferences_manager.h"
+#include "freertos/semphr.h"
 
 class Scale;
 
@@ -104,6 +105,7 @@ struct BlinkState
     unsigned long blinkInterval;
     TextBounds bounds;
     void *userData; // Pointer to UI instance
+    SemaphoreHandle_t mutex;
 };
 
 // Forward declaration of the FreeRTOS task function
