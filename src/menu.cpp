@@ -367,6 +367,10 @@ void Menu::handlePressMainMenu(int buttonPin)
     case PIN_TERMINAL_BUTTON:
         selectMenu(MenuType::STORE);
         ui.store->taint();
+
+        // ensure that the last drawn weight is reset so that we don't
+        // end up with an empty screen after returning from the store
+        ui.taint();
         break;
     default:
         Serial.println("Unknown Button Pressed");
@@ -514,6 +518,14 @@ void Menu::handlePressBarista(int buttonPin)
         Serial.println("Unknown Button Pressed in Barista");
         break;
     }
+}
+
+void Menu::clearScreen()
+{
+    tft.fillScreen(BACKGROUND_COLOR);
+
+    taint();
+    draw();
 }
 
 void Menu::draw()

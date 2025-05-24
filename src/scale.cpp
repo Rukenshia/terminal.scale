@@ -454,9 +454,9 @@ void Scale::leaveBaristaMode()
     baristaMode = false;
     baristaLastProgress = -99;
     baristaLastDrawnReading = -99.0f;
-    ui.menu->selectMenu(MAIN_MENU);
     ledStrip.turnOff();
     ui.taint();
+    ui.menu->selectMenu(MAIN_MENU);
 
     if (backgroundWeighingTaskHandle != NULL)
     {

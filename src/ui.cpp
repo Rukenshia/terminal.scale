@@ -460,6 +460,13 @@ void UI::loop()
         }
     }
 
+    // don't draw the bag not found or display the weight if we are in the prompt to reorder
+    if (menu->current == MAIN_MENU_PROMPT_REORDER ||
+        menu->current == MAIN_MENU_PROMPT_REORDER_AUTO)
+    {
+        return;
+    }
+
     if (scaleManager->bagRemovedFromSurface || !scaleManager->hasBag)
     {
         if (!drawnBagNotFound)
@@ -596,6 +603,7 @@ void UI::dismissReorderPrompt()
     taint();
     ledStrip.turnOff();
     menu->selectMenu(MAIN_MENU, false);
+    menu->clearScreen();
 }
 
 bool UI::handleBagNotOnSurface()
@@ -648,6 +656,9 @@ bool UI::handleBagNotOnSurface()
     }
     else
     {
+        // bag was possibly placed back on the scale
+        // so we automatically dismiss the prompt
+
         if (ledStrip.showingReorderIndicator)
         {
             ledStrip.turnOff();
@@ -656,7 +667,7 @@ bool UI::handleBagNotOnSurface()
         if (menu->current == MAIN_MENU_PROMPT_REORDER)
         {
             menu->selectMenu(MAIN_MENU, false);
-            menu->taint();
+            menu->clearScreen();
             ledStrip.turnOff();
         }
         reorderPromptDismissed = false;

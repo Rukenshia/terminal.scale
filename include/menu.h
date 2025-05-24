@@ -84,6 +84,7 @@ public:
     void hideButton(MenuButton button) { menuItems[button].visible = false; };
     bool isButtonVisible(MenuButton button) { return menuItems[button].visible; };
 
+    void clearScreen();
     void draw();
     void redraw()
     {

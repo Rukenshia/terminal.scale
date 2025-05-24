@@ -171,6 +171,7 @@ public:
     {
         lastDrawnReading = 0.0f;
         lastProgressBarFill = 0;
+        drawnBagNotFound = false;
     }
 
     bool reorderPromptDismissed = false;
